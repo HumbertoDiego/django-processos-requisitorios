@@ -3844,7 +3844,7 @@ V - órgão não participante - órgão ou entidade da administração pública 
     {{ "tipoempenho-anul"|mk_popoverhtml }}
 {% endif %}
 {% endblock %}
-{% block scripts% }
+{% block scripts %}
 <script>
 var countlinhas_pedido = 1;
 function addline_pedido(e, modo=""){
@@ -4290,8 +4290,8 @@ function isValidJSON(text) {
         }
         pop(objdados);
     }
-    {% if editavel and validade == 'null' %}
-    $("#files-carona").fileinput({
+        {% if editavel and validade == 'null' %}
+        $("#files-carona").fileinput({
             language: "pt-BR",
             previewFileType: 'image',
             maxFileCount: 8,
@@ -4336,8 +4336,8 @@ function isValidJSON(text) {
                     return false;
                 }
             },
-            uploadUrl: '{% url "api" "up",args=["carona"],vars=dict(processo=secao+"_"+ano+"_"+nr))}}',
-            deleteUrl: '{% url "api" "del",vars=dict(processo=secao+"_"+ano+"_"+nr))}}',
+            uploadUrl: '{% url "requisicoes:api" "up" "carona"  processo=secao|add:'_'|add:ano|add:'_'|add:nr %}',
+            deleteUrl: '{% url "requisicoes:api" "del" processo=secao|add:'_'|add:ano|add:'_'|add:nr %}',
             initialPreviewAsData: true, // identify if you are sending preview data only and not the raw markup
             initialPreviewFileType: 'image', // image is the default and can be overridden in config below
             initialPreview: [
@@ -4347,14 +4347,14 @@ function isValidJSON(text) {
             ],
             initialPreviewConfig: [
             {% for f in arq_carona %}
-                {% with ext=f.name|split:"."|last a=["txt","ini","md","json","geojson"] %}
-                    {% if ext in a %}
+                {% with ext=f.name|split:"."|last %}
+                    {% if ext in 'txt,ini,md,json,geojson' %}
                         {caption:"{{ f.name }}", type:"text", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
-                    {% elif ext in ["png","jpg","jpeg"] %}
+                    {% elif ext in 'png,jpg,jpeg' %}
                         {caption:"{{ f.name }}", type:"image", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
-                    {% elif ext in ["odt","ods","odp","doc","docx","xls","xlsx","ppt","pptx"] %}
+                    {% elif ext in 'odt,ods,odp,doc,docx,xls,xlsx,ppt,pptx' %}
                         {caption:"{{ f.name }}", type:"office", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
-                    {% elif ext in ["pdf"] %}
+                    {% elif ext in 'pdf' %}
                         {caption:"{{ f.name }}", type:"pdf", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
                     {% else %}
                         {caption:"{{ f.name }}", type:"other", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
@@ -4411,8 +4411,8 @@ function isValidJSON(text) {
                     return false;
                 }
             },
-            uploadUrl: '{% url "api" "up" "dispensa" processo=secao+"_"+ano+"_"+nr %}',
-            deleteUrl: '{% url "api" "del" processo=secao+"_"+ano+"_"+nr %}',
+            uploadUrl: '{% url "requisicoes:api" "up" "dispensa" processo  secao|add:'_'|add:ano|add:'_'|add:nr   %}',
+            deleteUrl: '{% url "requisicoes:api" "del" processo  secao|add:'_'|add:ano|add:'_'|add:nr   %}',
             initialPreviewAsData: true, // identify if you are sending preview data only and not the raw markup
             initialPreviewFileType: 'image', // image is the default and can be overridden in config below
             initialPreview: [
@@ -4423,13 +4423,13 @@ function isValidJSON(text) {
             initialPreviewConfig: [
                 {% for f in arq_dispensa %}
                     {% with ext=f.name|split:"."|last %}
-                        {% if ext in ["txt","ini","md","json","geojson"] %}
+                        {% if ext in 'txt,ini,md,json,geojson' %}
                             {caption:"{{ f.name }}", type:"text", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
-                        {% elif ext in ["png","jpg","jpeg"] %}
+                        {% elif ext in 'png,jpg,jpeg' %}
                             {caption:"{{ f.name }}", type:"image", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
-                        {% elif ext in ["odt","ods","odp","doc","docx","xls","xlsx","ppt","pptx"] %}
+                        {% elif ext in 'odt,ods,odp,doc,docx,xls,xlsx,ppt,pptx' %}
                             {caption:"{{ f.name }}", type:"office", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
-                        {% elif ext in ["pdf"] %}
+                        {% elif ext in 'pdf' %}
                             {caption:"{{ f.name }}", type:"pdf", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
                         {% else %}
                             {caption:"{{ f.name }}", type:"other", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
@@ -4484,8 +4484,8 @@ function isValidJSON(text) {
                     return false;
                 }
             },
-            uploadUrl: '{% url "api" "up",args=["inex"],vars=dict(processo=secao+"_"+ano+"_"+nr))}}',
-            deleteUrl: '{% url "api" "del",vars=dict(processo=secao+"_"+ano+"_"+nr))}}',
+            uploadUrl: '{% url "requisicoes:api" "up" "inex" processo=secao|add:'_'|add:ano|add:'_'|add:nr %}',
+            deleteUrl: '{% url "requisicoes:api" "del" processo=secao|add:'_'|add:ano|add:'_'|add:nr %}',
             initialPreviewAsData: true, // identify if you are sending preview data only and not the raw markup
             initialPreviewFileType: 'image', // image is the default and can be overridden in config below
             initialPreview: [
@@ -4495,23 +4495,23 @@ function isValidJSON(text) {
             ],
             initialPreviewConfig: [
             {% for f in arq_inex %}
-                    {% with ext=f.name|split:"."|last %}
-                        {% if ext in ["txt","ini","md","json","geojson"] %}
-                            {caption:"{{ f.name }}", type:"text", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
-                        {% elif ext in ["png","jpg","jpeg"] %}
-                            {caption:"{{ f.name }}", type:"image", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
-                        {% elif ext in ["odt","ods","odp","doc","docx","xls","xlsx","ppt","pptx"] %}
-                            {caption:"{{ f.name }}", type:"office", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
-                        {% elif ext in ["pdf"] %}
-                            {caption:"{{ f.name }}", type:"pdf", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
-                        {% else %}
-                            {caption:"{{ f.name }}", type:"other", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
-                        {% endif %}
-                    {% endwith %}
+                {% with ext=f.name|split:"."|last %}
+                    {% if ext in 'txt,ini,md,json,geojson' %}
+                        {caption:"{{ f.name }}", type:"text", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                    {% elif ext in 'png,jpg,jpeg' %}
+                        {caption:"{{ f.name }}", type:"image", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                    {% elif ext in 'odt,ods,odp,doc,docx,xls,xlsx,ppt,pptx' %}
+                        {caption:"{{ f.name }}", type:"office", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                    {% elif ext in 'pdf' %}
+                        {caption:"{{ f.name }}", type:"pdf", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                    {% else %}
+                        {caption:"{{ f.name }}", type:"other", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                    {% endif %}
+                {% endwith %}
                 {% endfor %}
             ],
          });
-         {% if editavel and validade == 'false' %}
+         {% elif editavel and validade == 'false' %}
             var v1 = document.querySelectorAll("button.btn.btn-success");
             for (let i=0;i<v1.length;i++){
                 v1[i].style = v1[i].style+";visibility: hidden;";
@@ -4626,7 +4626,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
         });
     });
     $('.header').each(function(){
-        $( this ).html('{{=hashed}}');
+        $( this ).html('{{ hashed }}');
     });
 
     function update(e){
@@ -4678,7 +4678,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                 }
             }
         }
-        oReq.open("POST", "{% url 'api' %}");
+        oReq.open("POST", "{% url 'requisicoes:api' %}");
         oReq.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
         oReq.send(params);
     }
@@ -4726,7 +4726,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                 }
             }
         }
-        oReq.open("POST", "{% url 'api' %}");
+        oReq.open("POST", "{% url 'requisicoes:api' %}");
         oReq.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
         oReq.send(params);
     }
@@ -4747,7 +4747,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
         var search = "span[id^='"+campo+"']";
         var searchupper = "span[id^='"+campo+"upper']";
         // Cantinho para ajax post request
-        var params = 'edit=1&processo={{=secao+"_"+ano+"_"+nr}}&modo='+modo+'&campo='+campo+'&valor='+txtareaval
+        var params = 'edit=1&processo={{  secao|add:'_'|add:ano|add:'_'|add:nr  }}&modo='+modo+'&campo='+campo+'&valor='+txtareaval
         var oReq = new XMLHttpRequest();
         oReq.onreadystatechange = function() {
             if (oReq.readyState === 4) {
@@ -4775,7 +4775,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                 }
             }
         }
-        oReq.open("POST", "{% url 'api' %}");
+        oReq.open("POST", "{% url 'requisicoes:api' %}");
         oReq.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
         oReq.send(params);
     }
@@ -4819,10 +4819,10 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                     }
                 }
             }
-            oReq.open("POST", "{% url 'api' remline=1 %}");
+            oReq.open("POST", "{% url 'requisicoes:api' remline=1 %}");
             oReq.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
             var params = {
-                "processo":'{{=secao+"_"+ano+"_"+nr}}',
+                "processo":'{{ secao|add:'_'|add:ano|add:'_'|add:nr }}',
                 "ord":element.id.split("-")[1]
             }
             oReq.send(JSON.stringify(params));
@@ -4879,10 +4879,10 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                 }
             }
         }
-        oReq.open("POST", "{% url 'api' assinar=1 %}");
+        oReq.open("POST", "{% url 'requisicoes:api' assinar=1 %}");
         //oReq.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
         oReq.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-        //var params = 'assinar=1&processo={{=secao+"_"+ano+"_"+nr}}&campo='+campo ;
+        //var params = 'assinar=1&processo={{  secao|add:'_'|add:ano|add:'_'|add:nr  }}&campo='+campo ;
         var params = {
             "processo":'{{ secao|add:'_'|add:ano|add:'_'|add:nr }}',
             "campo":campo,
@@ -4909,10 +4909,10 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                     }
                 }
             }
-            oReq.open("PUT", "{% url 'api' validar=1 %}");
+            oReq.open("PUT", "{% url 'requisicoes:api' validar=1 %}");
             //oReq.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
             oReq.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-            //var params = 'assinar=1&processo={{=secao+"_"+ano+"_"+nr}}&campo='+campo ;
+            //var params = 'assinar=1&processo={{  secao|add:'_'|add:ano|add:'_'|add:nr  }}&campo='+campo ;
             var params = {
                 "processo":'{{ secao|add:'_'|add:ano|add:'_'|add:nr }}',
             }
@@ -4934,10 +4934,10 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                     }
                 }
             }
-            oReq.open("PUT", "{{ url 'api' invalidar=1 }}");
+            oReq.open("PUT", "{% url 'requisicoes:api' invalidar=1 %}");
             //oReq.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
             oReq.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-            //var params = 'assinar=1&processo={{=secao+"_"+ano+"_"+nr}}&campo='+campo ;
+            //var params = 'assinar=1&processo={{  secao|add:'_'|add:ano|add:'_'|add:nr  }}&campo='+campo ;
             var params = {
                 "processo":'{{ secao|add:'_'|add:ano|add:'_'|add:nr }}',
             }
@@ -4971,7 +4971,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                 }
             }
         }
-        oReq.open("GET", "{% url 'api' secoesdesteuser=1 %}");
+        oReq.open("GET", "{% url 'requisicoes:api' secoesdesteuser=1 %}");
         oReq.send();
     }
     function clonar_confirm(){
@@ -4991,7 +4991,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                     }
             }
         }
-        oReq.open("PUT", "{% url 'api' clonar=1 %}");
+        oReq.open("PUT", "{% url 'requisicoes:api' clonar=1 %}");
         oReq.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
         var params = {
             "processo":'{{ secao|add:'_'|add:ano|add:'_'|add:nr }}',
@@ -5022,7 +5022,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                     }
             }
         }
-        oReq.open("POST", "{{ url 'api' comentar=1 }}");
+        oReq.open("POST", "{% url 'requisicoes:api' comentar=1 %}");
         oReq.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
         var params = {
             "processo":'{{ secao|add:'_'|add:ano|add:'_'|add:nr }}',
@@ -5099,7 +5099,7 @@ function ajax_novo(){
             }
         }
     }
-    oReq.open("POST", "{{ url 'api' }}");
+    oReq.open("POST", "{% url 'requisicoes:api' %}");
     oReq.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
     oReq.send(params);
 }
@@ -5128,7 +5128,7 @@ function ajax_getanos(){
             }
         }
     }
-    oReq.open("GET", "{{ url 'getanos' }}?"+params);
+    oReq.open("GET", "{% url 'requisicoes:getanos' %}?"+params);
     oReq.send();
 }
 setTimeout(function(){ ajax_getanos(); }, 1000);
@@ -5154,7 +5154,7 @@ if ("{{ retorno }}"){console.log("{{ retorno }}");}
                 }
             }
         }
-        oReq.open("GET", "{% url 'getComentarios' processo=secao|add:'_'|add:ano|add:'_'|add:nr %}");
+        oReq.open("GET", "{% url 'requisicoes:getcomentarios' processo=secao|add:'_'|add:ano|add:'_'|add:nr %}");
         oReq.send();
     });
 function imprimir(e){

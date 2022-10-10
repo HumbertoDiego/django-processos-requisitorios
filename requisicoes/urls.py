@@ -13,4 +13,8 @@ urlpatterns = [
     path('profile/', views.login, name='profile'),
     path('conf/', views.login, name='conf'),
     path('getodt/<str:processo>', views.getodt, name='getodt'),
+    path('api/<str:oq>', views.api, name='api'),
+    path('api/', views.api, name='api'),
+    path('getanos/', views.getanos, name='getanos'),
+    path('getcomentarios/<str:processo>', views.getcomentarios, name='getcomentarios'),
 ]

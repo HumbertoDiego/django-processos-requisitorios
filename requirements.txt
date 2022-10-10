@@ -1,0 +1,3 @@
+django==4.1
+django-auth-ldap
+gunicorn==20.1.0

@@ -2,6 +2,40 @@ from django.shortcuts import render
 from django.conf import settings
 from appconfig import app, host
 from datetime import date, datetime
+from django.http import JsonResponse
+
+def getcomentarios(request):
+    context = {
+        "flash":"",
+        "CHANGELOG": settings.CHANGELOG
+    } 
+    return render(request, 'requisicoes/index.html', context)
+
+# /requisicoes/default/getanos?secao=S3
+"""
+def getanos():
+    if request.vars.secao:
+        rows=dbpg(dbpg.processo_requisitorio.secao_ano_nr.contains(request.vars.secao)).select(dbpg.processo_requisitorio.secao_ano_nr)
+    else:
+        rows = []
+    #duas secoes com nome parecidos pode dar m aqui
+    anos=[r.secao_ano_nr.split("_")[-2] for r in rows]
+    anos.append(request.now.strftime('%Y'))
+    return response.json(sorted(list(set(anos))))
+"""
+
+def getanos(request):
+    retorno = "n"
+    if request.GET.get('anos','') == "1":
+        retorno = "anos"
+    if request.GET.get('secao',False):
+        retorno = request.GET.get('secao')
+    context = {
+        "flash":"",
+        "CHANGELOG": settings.CHANGELOG,
+        "retorno" : retorno
+    } 
+    return JsonResponse(context)
 
 def getodt(request,secao):
     context = {
@@ -56,6 +90,13 @@ def conf(request):
     return render(request, 'requisicoes/index.html', context)
 
 def profile(request):
+    context = {
+        "flash":"",
+        "CHANGELOG": settings.CHANGELOG
+    } 
+    return render(request, 'requisicoes/index.html', context)
+
+def api(request):
     context = {
         "flash":"",
         "CHANGELOG": settings.CHANGELOG

@@ -1,0 +1,63 @@
+version: "3.3"
+
+services:
+  prs:
+    build: .
+    depends_on:
+      - post
+    networks:
+      - overlay
+    container_name: processos-requisitorios
+    working_dir: /var/www/prs
+    command: bash apache2ctl -D FOREGROUND
+    ports:
+          - 443:443
+    environment:
+      POST_HOST: post
+      POST_USER: postgres
+      POST_PASSWORD: secret
+      POST_APPDB: requisicoes
+      POST_AUTHDB: authdb
+    restart: always
+  post:
+    image: postgres:12-alpine
+    container_name: post
+    networks:
+      - overlay
+    ports:
+      - 5432:5432
+    volumes:
+      - ./docker-postgresql-multiple-databases:/docker-entrypoint-initdb.d
+      - post-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: secret
+      POSTGRES_MULTIPLE_DATABASES: requisicoes,authdb
+    restart: always
+  ldap:
+    image: osixia/openldap:1.5.0
+    container_name: ldap
+    networks:
+      - overlay
+    volumes:
+      - ldap-data:/var/lib/ldap
+      - ldap-conf:/etc/ldap/slapd.d
+    environment:
+      LDAP_DOMAIN: eb.mil.br
+      LDAP_ADMIN_PASSWORD: secret
+    restart: always
+  phpldapadmin:
+    image: osixia/phpldapadmin:0.9.0
+    container_name: phpldapadmin
+    networks:
+      - overlay
+    ports:
+      - 6443:443
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: ldap
+    restart: always
+volumes:
+  post-data:
+  ldap-data:
+  ldap-conf:
+networks:
+  overlay:
