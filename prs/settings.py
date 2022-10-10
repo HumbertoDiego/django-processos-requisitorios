@@ -11,10 +11,10 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 from pathlib import Path
+import json
 from appconfig import app, host
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
@@ -27,10 +27,11 @@ DEBUG = True
 
 ALLOWED_HOSTS = host["names"]
 
-
+CHANGELOG = json.loads(open("changelog.json", "r", encoding="utf-8").read())
 # Application definition
 
 INSTALLED_APPS = [
+    'requisicoes',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
