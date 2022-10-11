@@ -1,9 +1,9 @@
-FROM python:3.10-slim-buster
+FROM python:3.9-slim-bullseye
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
 # Turns off buffering for easier container logging
 ENV PYTHONUNBUFFERED=1
-WORKDIR /var/www/prs
+WORKDIR /var/www/django
 RUN apt update
 RUN apt -y install apache2 libapache2-mod-wsgi-py3 nano libldap2-dev libsasl2-dev gcc lsof nmap python3-pip python3-psycopg2 postgresql-client
 RUN a2enmod ssl \
@@ -26,4 +26,4 @@ RUN chown -R www-data. .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN /etc/init.d/apache2 restart
 EXPOSE 443
-CMD ["apache2ctl", "-D", "FOREGROUND"]
+#CMD ["apache2ctl", "-D", "FOREGROUND"]

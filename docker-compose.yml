@@ -8,9 +8,12 @@ services:
     networks:
       - overlay
     container_name: processos-requisitorios
-    working_dir: /var/www/prs
+    working_dir: /var/www/django
     command: bash apache2ctl -D FOREGROUND
+    volumes:
+          - ./:/var/www/django
     ports:
+          - 80:80
           - 443:443
     environment:
       POST_HOST: post
