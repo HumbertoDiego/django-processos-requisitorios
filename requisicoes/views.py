@@ -1,8 +1,9 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.conf import settings
 from appconfig import app, host
 from datetime import date, datetime
 from django.http import JsonResponse
+from django.contrib.auth import authenticate, login, logout
 
 def getcomentarios(request):
     context = {
@@ -45,7 +46,13 @@ def getodt(request,secao):
     return render(request, 'requisicoes/index.html', context)
 
 def index(request):
-    user = {"user":{"username":"capfoo"}}
+    retorno = ""
+    user = None
+    is_logged_in = False
+    if request.user.is_authenticated:
+        user = request.user
+        is_logged_in = True
+        retorno = "Usuário existente"
     context = {
         "app": app,
         "ano":"2022",
@@ -53,27 +60,27 @@ def index(request):
         "nr":"01",
         "flash":"",
         "CHANGELOG": settings.CHANGELOG,
-        "auth":{"user":{}, "is_logged_in": False},
+        "auth":{"user": user, "is_logged_in": is_logged_in},
         "form_user":"ccc",
         "today": datetime.now().strftime("%d/%m/%Y"),
         "editavel":True,
-        "validade":'null'
+        "validade":'null',
+        "retorno": retorno
     } 
     return render(request, 'requisicoes/index.html', context)
 
-def login(request):
-    context = {
-        "flash":"",
-        "CHANGELOG": settings.CHANGELOG
-    } 
-    return render(request, 'requisicoes/index.html', context)
+def userlogin(request):
+    if request.POST.get('username') and request.POST.get('password'):
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(username=username, password=password)
+        if user is not None:
+            login(request, user)
+    return redirect('requisicoes:index')
 
-def logout(request):
-    context = {
-        "flash":"",
-        "CHANGELOG": settings.CHANGELOG
-    } 
-    return render(request, 'requisicoes/index.html', context)
+def userlogout(request):
+    logout(request)
+    return redirect('requisicoes:index')
 
 def pendencias(request, dequem):
     context = {

@@ -13,7 +13,6 @@ services:
     volumes:
           - ./:/var/www/django
     ports:
-          - 80:80
           - 443:443
     environment:
       POST_HOST: post
@@ -27,11 +26,11 @@ services:
     container_name: post
     networks:
       - overlay
-    ports:
-      - 5432:5432
     volumes:
       - ./docker-postgresql-multiple-databases:/docker-entrypoint-initdb.d
       - post-data:/var/lib/postgresql/data
+    ports:
+          - 5432:5432
     environment:
       POSTGRES_PASSWORD: secret
       POSTGRES_MULTIPLE_DATABASES: requisicoes,authdb

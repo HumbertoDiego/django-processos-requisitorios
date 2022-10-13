@@ -21,7 +21,7 @@ RUN openssl genrsa 2048 > /etc/apache2/ssl/self_signed.key \
 COPY default.conf /etc/apache2/sites-available/default.conf
 RUN a2dissite 000-default.conf \
     && a2ensite default.conf
-COPY . .
+COPY requirements.txt .
 RUN chown -R www-data. .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN /etc/init.d/apache2 restart

@@ -45,7 +45,8 @@ App para montagem de processos requisitórios para subsidiar o empenho para aqui
 
 `docker-compose up -d`  
 `docker-compose exec prs python manage.py makemigrations`  
-`docker-compose exec prs python manage.py migrate`  
+`docker-compose exec prs python manage.py migrate --database=dbpg `  
+`docker-compose exec prs python manage.py migrate sped --database=dbpgsped`  
 `docker-compose exec prs python manage.py createsuperuser`  
 `docker-compose restart`
 

@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 from pathlib import Path
 import json, os
 from appconfig import app, host
+import ldap
+from django_auth_ldap.config import LDAPSearch
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -31,6 +33,7 @@ CHANGELOG = json.loads(open("changelog.json", "r", encoding="utf-8").read())
 # Application definition
 
 INSTALLED_APPS = [
+    'sped',
     'requisicoes',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -39,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -76,11 +80,23 @@ WSGI_APPLICATION = 'prs.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ['POST_APPDB'],
+        'USER': os.environ['POST_USER'],
+        'PASSWORD': os.environ['POST_PASSWORD'],
+        'HOST': os.environ['POST_HOST'],
+        'PORT': '5432'
+    },
+    'dbpgsped': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ['POST_AUTHDB'],
+        'USER': os.environ['POST_USER'],
+        'PASSWORD': os.environ['POST_PASSWORD'],
+        'HOST': os.environ['POST_HOST'],
+        'PORT': '5432'
     }
 }
-
+DATABASE_ROUTERS = ['router.sped.dbpgspedRouter']
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -123,4 +139,12 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-HAS_SPED = False
+AUTH_LDAP_SERVER_URI = "ldap://ldap"
+
+AUTH_LDAP_BIND_DN = ""
+AUTH_LDAP_BIND_PASSWORD = ""
+#AUTH_LDAP_USER_SEARCH = LDAPSearch("dc=eb,dc=mil,dc=br", ldap.SCOPE_SUBTREE, "(cn=%(user)s)")
+AUTH_LDAP_USER_DN_TEMPLATE = "cn=%(user)s,dc=eb,dc=mil,dc=br"
+
+AUTHENTICATION_BACKENDS = ['django_auth_ldap.backend.LDAPBackend',
+                           'django.contrib.auth.backends.ModelBackend']

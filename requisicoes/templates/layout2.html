@@ -474,7 +474,7 @@ select[multiple*="multiple"]    {
             <li><a class="dropdown-item" href="{% url 'requisicoes:logout' %}">Logout</a></li>
             {% else %}
             <li>
-                <form class="p-4" action="#" class="form-horizontal" enctype="multipart/form-data" method="post">
+                <form class="p-4" action="{% url 'requisicoes:login' %}" class="form-horizontal" enctype="multipart/form-data" method="post">
                     <div class="form-group mb-3" id="auth_user_username__row">
                         <label for="auth_user_username" class="form-label" id="auth_user_username__label">Usuário</label>
                         <input type="text" class="form-control" id="auth_user_email" placeholder="Usuário Sped" style="width:auto" name="username" value="">
@@ -486,7 +486,7 @@ select[multiple*="multiple"]    {
                         <span class="help-block"></span>
                     </div>
                     <button type="submit" class="btn btn-primary">Entrar</button>
-                    {{ form_user.custom.endblock }}
+                    {% csrf_token %}
                 </form>
             </li>
             {% endif %}
