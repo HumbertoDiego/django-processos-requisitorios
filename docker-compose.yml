@@ -32,6 +32,7 @@ services:
     ports:
           - 5432:5432
     environment:
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
       POSTGRES_MULTIPLE_DATABASES: requisicoes,authdb
     restart: always
