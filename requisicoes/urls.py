@@ -4,9 +4,7 @@ from . import views
 
 app_name = 'requisicoes'
 urlpatterns = [
-    path('', views.index, name='index'),
-    path('index.html', views.index, name='index'),
-    path('index', views.index, name='index'),
+    re_path(r'^index/$', views.index, name='index'),
     path('login', views.userlogin, name='login'),
     path('logout', views.userlogout, name='logout'),
     path('pesquisar/', views.login, name='pesquisar'),

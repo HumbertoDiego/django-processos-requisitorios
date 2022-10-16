@@ -3,6 +3,8 @@ from django.contrib import admin
 from .models import Usuario, Usuario_Pessoa, Usuario_Secao, Pessoa, Secao
 
 class MyUsuarioAdmin(admin.ModelAdmin):
+    #def has_add_permission(self, request, obj=None):
+    #    return False
     pass
 admin.site.register(Usuario,MyUsuarioAdmin)
 

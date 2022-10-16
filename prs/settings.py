@@ -43,7 +43,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 ]
 
-
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -148,3 +147,9 @@ AUTH_LDAP_USER_DN_TEMPLATE = "cn=%(user)s,dc=eb,dc=mil,dc=br"
 
 AUTHENTICATION_BACKENDS = ['django_auth_ldap.backend.LDAPBackend',
                            'django.contrib.auth.backends.ModelBackend']
+
+MEDIA_ROOT = BASE_DIR / 'uploads/'
+MEDIA_URL = '/uploads/'
+
+ALLOWED = app.get('allowed_ext')
+MAXSIZE = int(app.get('maxtotalfsize'))

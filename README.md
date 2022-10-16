@@ -67,6 +67,8 @@ Para criar um usuário administrador chamado (capfoo) em uma seção, execute ap
 
 `docker-compose exec prs python pop_organization.py <POST_USER> <POST_PASSWORD>`
 
+`docker-compose exec prs service apache2 reload`
+
 Navegar para o PHPLDAPADMIN em _<https://localhost:6443/>_ (ou pelo IP da máquina onde o docker está instalado) para criar o usuário _capfoo_, em login:
   - Login DN: cn=admin,dc=eb,dc=mil,dc=br # de acordo com LDAP_DOMAIN em docker-compose.yml
   - Password: LDAP_ADMIN_PASSWORD em docker-compose.yml
