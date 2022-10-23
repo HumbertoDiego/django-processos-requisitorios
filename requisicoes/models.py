@@ -8,10 +8,10 @@ from django.conf import settings
 from appconfig import app
 
 class Configuracao(models.Model):
-    contas_salc = models.CharField(validators=[int_list_validator],blank=True,null=True, max_length=100, help_text=mark_safe("Contas do SPED autorizadas a executar as ações da <b>SALC</b>:"))
-    conta_fiscal = models.IntegerField(blank=True,null=True, help_text=mark_safe("Conta do SPED autorizada a assinar em <b>Fiscal Administrativo</b>:"))
-    conta_od = models.IntegerField(blank=True,null=True, help_text=mark_safe("Conta do SPED autorizada a assinar em <b>Ordenador de Despesas</b>:"))
-    conta_odsubstituto = models.IntegerField(blank=True,null=True, help_text=mark_safe("Conta do SPED autorizada a assinar como <b>Ordenador de Despesas Substituto</b>:"))
+    contas_salc = models.CharField(validators=[int_list_validator],blank=True,null=True, max_length=100, help_text=mark_safe("Contas do SPED autorizadas a executar as ações da <b>SALC</b>"))
+    conta_fiscal = models.IntegerField(blank=True,null=True, help_text=mark_safe("Conta do SPED autorizada a assinar em <b>Fiscal Administrativo</b>"))
+    conta_od = models.IntegerField(blank=True,null=True, help_text=mark_safe("Conta do SPED autorizada a assinar em <b>Ordenador de Despesas</b>"))
+    conta_odsubstituto = models.IntegerField(blank=True,null=True, help_text=mark_safe("Conta do SPED autorizada a assinar como <b>Ordenador de Despesas Substituto</b>"))
     class Meta:
         verbose_name_plural = "Configurações"
         db_table = 'configuracao'
