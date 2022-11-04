@@ -11,21 +11,21 @@ def pop(**kargs):
     cur.execute("INSERT INTO usuario (nm_usuario, in_excluido) VALUES (%s,%s) RETURNING id_usuario;", ("Ch Almox", "n"))
     id_usuario_chalmox = cur.fetchone()[0]
     cur.execute("INSERT INTO secao (id_pai, nm_sigla, in_excluido) VALUES (%s,%s,%s) RETURNING id_secao;", (id_secao_pai,"Aquisições","n"))
-    id_secao = cur.fetchone()[0]
+    id_secao_aquisicoes = cur.fetchone()[0]
     cur.execute("INSERT INTO usuario (nm_usuario, in_excluido) VALUES (%s,%s) RETURNING id_usuario;", ("Ch SALC", "n"))
-    id_usuario = cur.fetchone()[0]
+    id_usuario_chsalc = cur.fetchone()[0]
     cur.execute("INSERT INTO pessoa (nm_login, nm_completo, cd_patente, nm_guerra) VALUES (%s,%s,%s,%s) RETURNING id_pessoa", ("capfoo", "Foo Bar", "8", "Foo"))
     id_pessoa = cur.fetchone()[0]
-    cur.execute("INSERT INTO usuario_pessoa (id_usuario, id_pessoa) VALUES (%s,%s)", (id_usuario, id_pessoa))
-    cur.execute("INSERT INTO usuario_secao (id_usuario, id_secao) VALUES (%s,%s)", (id_usuario, id_secao))
+    cur.execute("INSERT INTO usuario_pessoa (id_usuario, id_pessoa) VALUES (%s,%s)", (id_usuario_chsalc, id_pessoa))
+    cur.execute("INSERT INTO usuario_secao (id_usuario, id_secao) VALUES (%s,%s)", (id_usuario_chsalc, id_secao_aquisicoes))
     cur.execute("INSERT INTO usuario_secao (id_usuario, id_secao) VALUES (%s,%s)", (id_usuario_chalmox, id_secao_almox))
     con.commit()
 
-    print(id_secao,id_pessoa,id_usuario)
+    print(id_secao_aquisicoes,id_pessoa,id_usuario_chsalc)
     
     con2 = psycopg2.connect("host=post dbname=requisicoes user=%s password=%s"%(user,senha))
     cur2 = con2.cursor()
-    cur2.execute("INSERT INTO configuracao (contas_salc,conta_fiscal,conta_od) VALUES (%s,%s,%s)", ([id_usuario],id_usuario,id_usuario))
+    cur2.execute("INSERT INTO configuracao (contas_salc,conta_fiscal,conta_od) VALUES (%s,%s,%s)", ([id_usuario_chsalc],id_usuario_chsalc,id_usuario_chsalc))
     con2.commit()
     # Close communication with the database
     cur.close()

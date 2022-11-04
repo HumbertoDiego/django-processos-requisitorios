@@ -402,18 +402,19 @@ def my_redirect(url,params):
 
 ############################################### Fim funções de apoio ##########################################
 
-def index(request):
-    secoes = get_secoes()
+def index(request, secao="", ano="", nr=""):
+    retorno = ""
     if request.GET.get('secao_change',False):
         params = dict(secao=request.GET.get('sec',''),ano=request.GET['ano'],nr="01")
         return my_redirect(reverse('requisicoes:index'),params)
     secao = request.GET.get('secao') if request.GET.get('secao') else app['secao_escape']
-    ano = request.GET['ano'] if request.GET.get('ano') else date.today().strftime('%Y')
     nr = request.GET['nr'] if request.GET.get('nr') else "01"
+    ano = request.GET['ano'] if request.GET.get('ano') else date.today().strftime('%Y')
     if not request.GET.get('secao') or not request.GET.get('ano') or not request.GET.get('nr'):
         params = dict(secao=secao,ano=ano,nr=nr)
         return my_redirect(reverse('requisicoes:index'),params)
     # Validação das seções
+    secoes = get_secoes()
     if secao not in secoes:
         params = dict(secao=secoes[-1],ano=ano,nr=nr)
         return my_redirect(reverse('requisicoes:index'),params)
@@ -421,7 +422,6 @@ def index(request):
     secoesdesteuser = getSecoesDesteUser(request)
     editavel = True if secao in secoesdesteuser else False
     # Validação dos niveis de autorização para este user
-    retorno = ""
     user = None
     is_logged_in = False
     if request.user.is_authenticated:
@@ -429,24 +429,27 @@ def index(request):
         is_logged_in = True
         retorno = "Usuário existente"
     is_salc,is_fiscal,is_od,is_admin,is_odsubstituto = getPrivs(request)
+    rows = Processo_requisitorio.objects.filter(secao_ano_nr__contains=secao+"_"+ano).order_by('-id')
+    nr = "01" if not rows else nr
     context = {
         "app": app,
         "ano": ano,
-        "secao":secao,
+        "secao": secao,
         "nr": nr,
-        "flash":"",
+        "flash": "",
         "CHANGELOG": settings.CHANGELOG,
-        "auth":{"user": user, "is_logged_in": is_logged_in},
-        "form_user":"ccc",
+        "auth": {"user": user, "is_logged_in": is_logged_in},
+        "form_user": "ccc",
         "today": datetime.now().strftime("%d/%m/%Y"),
-        "editavel":editavel,
-        "is_salc":is_salc,
-        "is_admin":is_admin,
-        "is_od":is_od,
-        "is_fiscal":is_fiscal,
-        "validade":'null',
+        "editavel": editavel,
+        "is_salc": is_salc,
+        "is_admin": is_admin,
+        "is_od": is_od,
+        "is_fiscal": is_fiscal,
+        "validade": 'null',
         "retorno": secao,
-        "SECOES": secoes
+        "SECOES": secoes,
+        "rows": rows
     } 
     return render(request, 'requisicoes/index.html', context)
 
@@ -512,7 +515,7 @@ def conf(request):
         if form.is_valid():
             form.save()
             flash = 'Edições salvas!'
-            return HttpResponseRedirect('/conf/')
+            #return HttpResponseRedirect('/conf/')
         else:
             flash = 'Formulário tem erros!'
     else:
@@ -613,8 +616,79 @@ def profile(request):
     return render(request, 'requisicoes/profile.html', context)
 
 def api(request):
-    context = {
-        "flash":"",
-        "CHANGELOG": settings.CHANGELOG
-    } 
-    return render(request, 'requisicoes/index.html', context)
+    if not request.user.is_authenticated: # somente usuários logados podem usar esta API
+        return HttpResponse('Unauthorized', status=401)
+    secoes_deste_user = getSecoesDesteUser(request)
+    contas_do_user = getContasDesteUser(request) # reinterpretação de usuarios_da_pessoa(pessoa)
+    def anos_com_processos_desta_secao(secao):
+        # Web2py:PyDAL way
+        #dbpg(dbpg.processo_requisitorio.secao_ano_nr.contains(secao)).
+        # select(dbpg.processo_requisitorio.secao_ano_nr) 
+        # duas secoes com nome parecidos pode dar m aqui
+        # Django way
+        rows = Processo_requisitorio.objects.filter(secao_ano_nr__contains=secao)
+        # # "_".join(a.split("_")[:-2]) -> para sempre pegar o nome da secao independe se houver "_" dentro do nome
+        anos=[r.secao_ano_nr.split("_")[-2] for r in rows]
+        return sorted(list(set(anos)))
+    if request.method =='GET':
+        dic=dict(anos=False,secoesdesteuser=False)
+        vars = request.GET.copy()
+        dic['vars'] = vars
+        for key, value in dic.items():
+            if key in vars: dic.update({key:True if (vars[key] == "1" or vars[key] == "true") else False})
+        if dic['anos']:
+            try:
+                dic['vars'] = vars
+                secao = vars.pop('secao')
+                dic['anos'] = anos_com_processos_desta_secao(secao)
+            except Exception as e:
+                return HttpResponse(mark_safe(f'<h2>{e=}</h2>'), status=400)
+        if dic['secoesdesteuser']:
+            try:
+                dic['vars'] = vars
+                dic['secoes'] = list(set(secoes_deste_user))
+                #dic['processo'] = vars.get('processo',"")#unquote(vars.get('processo',""))
+            except Exception as e:
+                return HttpResponse(mark_safe(f'<h2>{e=}</h2>'), status=400)
+        return JsonResponse(dic)
+    elif request.method =='POST':
+        dic=dict(novo=False,edit=False,assinar=False,comentar=False,remline=False)
+        vars = request.POST.copy()
+        dic['vars'] = vars.copy()
+        for key, value in dic.items():
+            if key in vars: dic.update({key:True if (vars[key] == "1" or vars[key] == "true") else False})
+        #clean data
+        vars['processo'] = vars.get('processo',"")
+        allowed = list(app['allowed_ext'])
+        if dic['novo']:
+            try:
+                resumo = vars.get('resumo')
+                ano = vars.get('ano')
+                secao = vars.get('secao')
+                groups = secoes_deste_user
+                dic['grupos_deste_user'] = groups
+            except Exception as e:
+                return HttpResponse(mark_safe(f'<h2>{e=}</h2>'), status=400)
+            try:
+                if secao not in groups:
+                    return HttpResponse('Forbidden', status=403)
+                else:
+                    #web2py
+                    # dbpg(dbpg.processo_requisitorio.secao_ano_nr.like(secao+'_'+ano+'%')).select(orderby='id').last()
+                    # dbpg.processo_requisitorio.insert( secao_ano_nr=secao+'_'+ano+'_'+nr, resumo=resumo ,dados=response.json({"data":request.now.strftime('%d/%m/%Y'),"modo":"gerente"}))
+                    #django
+                    try:
+                        last = Processo_requisitorio.objects.filter(secao_ano_nr__contains=secao+'_'+ano+'_').latest('id')
+                    except:
+                        last = None
+                    nr = "%02d"%(int(last.secao_ano_nr.split("_")[-1])+1) if last else "01"
+                    p = Processo_requisitorio(secao_ano_nr=secao+'_'+ano+'_'+nr, resumo=resumo ,dados=json.dumps({"data":date.today().strftime('%d/%m/%Y'),"modo":"gerente"}))
+                    p.save()
+                    dic['nr']=nr
+                    dic['p'] = p.id
+                    params = dict(secao=secao,ano=ano,nr=nr)
+                    dic['redirect2'] = '/index?' + urllib.parse.urlencode(params)
+                    return JsonResponse(dic)
+            except Exception as e:
+                return HttpResponse(mark_safe(f'<h2>{e=}</h2>'), status=403)
+    return JsonResponse(dic)
