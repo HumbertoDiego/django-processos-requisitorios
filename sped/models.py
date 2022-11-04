@@ -39,7 +39,7 @@ class Usuario_Pessoa(models.Model):
     id_usuario_pessoa = models.AutoField(primary_key=True)
     id_usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE,db_column='id_usuario')
     id_pessoa = models.ForeignKey(Pessoa, on_delete=models.CASCADE,db_column='id_pessoa')
-    dt_fim = models.CharField(max_length=50,null=True)
+    dt_fim = models.CharField(max_length=50,blank=True,null=True)
     class Meta:
         verbose_name_plural = "Usuários (Contas) de Pessoas"
         db_table = 'usuario_pessoa'

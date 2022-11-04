@@ -3433,6 +3433,7 @@ V - órgão não participante - órgão ou entidade da administração pública 
       </div>
       <div class="modal-body">
           <form id="form_novo">
+              {% csrf_token %}
               <div class="form-group">
                   <div class="mb-3">
                       <label class="col-form-label" for="no_table_evento">Resumo da aquisição</label>
@@ -4819,7 +4820,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                     }
                 }
             }
-            oReq.open("POST", "{% url 'requisicoes:api' remline=1 %}");
+            oReq.open("POST", "{% url 'requisicoes:api' %}?remline=1");
             oReq.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
             var params = {
                 "processo":'{{ secao|add:'_'|add:ano|add:'_'|add:nr }}',
@@ -4879,7 +4880,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                 }
             }
         }
-        oReq.open("POST", "{% url 'requisicoes:api' assinar=1 %}");
+        oReq.open("POST", "{% url 'requisicoes:api'%}?assinar=1");
         //oReq.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
         oReq.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
         //var params = 'assinar=1&processo={{  secao|add:'_'|add:ano|add:'_'|add:nr  }}&campo='+campo ;
@@ -4909,7 +4910,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                     }
                 }
             }
-            oReq.open("PUT", "{% url 'requisicoes:api' validar=1 %}");
+            oReq.open("PUT", "{% url 'requisicoes:api' %}?validar=1");
             //oReq.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
             oReq.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
             //var params = 'assinar=1&processo={{  secao|add:'_'|add:ano|add:'_'|add:nr  }}&campo='+campo ;
@@ -4934,7 +4935,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                     }
                 }
             }
-            oReq.open("PUT", "{% url 'requisicoes:api' invalidar=1 %}");
+            oReq.open("PUT", "{% url 'requisicoes:api' %}?invalidar=1");
             //oReq.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
             oReq.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
             //var params = 'assinar=1&processo={{  secao|add:'_'|add:ano|add:'_'|add:nr  }}&campo='+campo ;
@@ -4971,7 +4972,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                 }
             }
         }
-        oReq.open("GET", "{% url 'requisicoes:api' secoesdesteuser=1 %}");
+        oReq.open("GET", "{% url 'requisicoes:api' %}?secoesdesteuser=1");
         oReq.send();
     }
     function clonar_confirm(){
@@ -4991,7 +4992,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                     }
             }
         }
-        oReq.open("PUT", "{% url 'requisicoes:api' clonar=1 %}");
+        oReq.open("PUT", "{% url 'requisicoes:api' %}?clonar=1");
         oReq.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
         var params = {
             "processo":'{{ secao|add:'_'|add:ano|add:'_'|add:nr }}',
@@ -5022,7 +5023,7 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                     }
             }
         }
-        oReq.open("POST", "{% url 'requisicoes:api' comentar=1 %}");
+        oReq.open("POST", "{% url 'requisicoes:api' %}?comentar=1");
         oReq.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
         var params = {
             "processo":'{{ secao|add:'_'|add:ano|add:'_'|add:nr }}',
@@ -5083,8 +5084,10 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
     }
 function ajax_novo(){
     var desc = document.getElementById("resumo").value;
+    var csrf = document.getElementsByName("csrfmiddlewaretoken")[0].value;
     var secao_ori = document.getElementById("secao_ori").value;
     var params = 'novo=1&ano='+secao_ori.split("/")[1]+'&resumo='+desc+'&secao='+secao_ori.split("/")[0];
+    params += '&csrfmiddlewaretoken='+csrf;
     var oReq = new XMLHttpRequest();
     oReq.onreadystatechange = function() {
         if (oReq.readyState === 4) {
@@ -5101,6 +5104,8 @@ function ajax_novo(){
     }
     oReq.open("POST", "{% url 'requisicoes:api' %}");
     oReq.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+    oReq.setRequestHeader('x-csrf-token', csrf);
+    console.log(params);console.log(csrf);
     oReq.send(params);
 }
 function ajax_getanos(){

@@ -250,11 +250,12 @@ div span i{
 .w2p_flash,.w2p_flash2,.w2p_flash21,.w2p_flash3,.w2p_flash4,.w2p_flash5 {
     position: fixed;
     width: 25%;
-    top: 10px;
+    top: 56px;
     right: 1%;
     cursor: default;
     text-align: center;
     z-index: 5620;
+    border: 1px solid;
 }
 
 .marcaDagua {
@@ -463,13 +464,13 @@ select[multiple*="multiple"]    {
                 <li><a class="dropdown-item" href="{% url 'requisicoes:profile' %}">Perfil</a></li>
                 {% if is_salc or is_admin %}
                     <li><a class="dropdown-item" href="{% url 'requisicoes:conf' %}">Configurações</a></li>
-                    <li><a class="dropdown-item" href="{% url 'requisicoes:pendencias' 'salc' %}">Pendblockênicas da SALC</a></li>
-                    <li><a class="dropdown-item" href="{% url 'requisicoes:pendencias' 'fiscal' %}">Pendblockênicas do Fiscal</a></li>
-                    <li><a class="dropdown-item" href="{% url 'requisicoes:pendencias' 'od' %}">Pendblockênicas do OD</a></li>
+                    <li><a class="dropdown-item" href="{% url 'requisicoes:pendencias' 'salc' %}">Pendências da SALC</a></li>
+                    <li><a class="dropdown-item" href="{% url 'requisicoes:pendencias' 'fiscal' %}">Pendências do Fiscal</a></li>
+                    <li><a class="dropdown-item" href="{% url 'requisicoes:pendencias' 'od' %}">Pendências do OD</a></li>
                 {% elif is_fiscal %}
-                    <li><a class="dropdown-item" href="{% url 'requisicoes:pendencias' 'fiscal' %}">Pendblockênicas do Fiscal</a></li>
+                    <li><a class="dropdown-item" href="{% url 'requisicoes:pendencias' 'fiscal' %}">Pendências do Fiscal</a></li>
                 {% elif is_od %}
-                    <li><a class="dropdown-item" href="{% url 'requisicoes:pendencias' 'od' %}">Pendblockênicas do OD</a></li>
+                    <li><a class="dropdown-item" href="{% url 'requisicoes:pendencias' 'od' %}">Pendências do OD</a></li>
                 {% endif %}
             <li><a class="dropdown-item" href="{% url 'requisicoes:logout' %}">Logout</a></li>
             {% else %}
