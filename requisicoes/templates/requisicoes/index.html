@@ -50,19 +50,19 @@
         {% endif %}
       {% for pr in rows %}
             {% with pr.secao_ano_nr|split:"_" as s_a_n %}
-                <a href="{% url 'requisicoes:index' secao=s_a_n.0 ano=s_a_n.1 nr=s_a_n.2 %}" class="list-group-item list-group-item-action py-3 lh-tight {% if nr == s_a_n.2 %} azul{% endif %}">
-            {% endwith %}
-            <div class="d-flex w-100 align-items-center justify-content-between">
-              <div class="col-10 mb-1 small max60chars" title="{{ pr.resumo }}">{{ pr.resumo }}</div>
-              {% if pr.valido == True %}
-              <small class="badge {{ 'bg-success' }}">{{ s_a_n.2|min_dois_digitos }}</small>
-              {% elif pr.valido == False %}
-              <small class="badge {{ 'bg-danger' }}">{{ s_a_n.2|min_dois_digitos }}</small>
-              {% else %}
-              <small class="badge {{ 'bg-transparente text-dark' }}">{{ s_a_n.2|min_dois_digitos }}</small>
-              {% endif %}
-            </div>
-          </a>
+            <a href="{% url 'requisicoes:index' secao=s_a_n.0 ano=s_a_n.1 nr=s_a_n.2 %}" class="list-group-item list-group-item-action py-3 lh-tight {% if nr == s_a_n.2 %} azul{% endif %}">
+                <div class="d-flex w-100 align-items-center justify-content-between">
+                <div class="col-10 mb-1 small max60chars" title="{{ pr.resumo }}">{{ pr.resumo }}</div>
+                {% if pr.valido == True %}
+                <small class="badge bg-success">{{ s_a_n.2|min_dois_digitos }}</small>
+                {% elif pr.valido == False %}
+                <small class="badge bg-danger">{{ s_a_n.2|min_dois_digitos }}</small>
+                {% else %}
+                <small class="badge bg-transparente text-dark">{{ s_a_n.2|min_dois_digitos }}</small>
+                {% endif %}
+                </div>
+            </a>
+          {% endwith %}
       {% endfor %}
     </div>
 {% endblock %}
