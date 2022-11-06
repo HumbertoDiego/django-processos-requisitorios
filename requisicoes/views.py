@@ -1,4 +1,4 @@
-from appconfig import app
+from appconfig import app, sped, ldap as ldapconf
 from datetime import date, datetime
 from django.shortcuts import render, redirect
 from django.urls import reverse
@@ -11,6 +11,19 @@ import json
 from sped.models import Secao, Pessoa, Usuario, Usuario_Pessoa, Usuario_Secao
 from .models import Configuracao, Processo_requisitorio, Anexo, Assinatura
 import urllib
+from django.views.decorators.csrf import csrf_exempt
+import re
+
+def CRYPT(text, key="", salt="", digest_alg="sha256"):
+    """Generate hash with the given text using the specified digest algorithm."""
+    import hmac
+    text = text.encode("utf-8", "strict")
+    key = key.encode("utf-8", "strict")
+    salt = salt.encode("utf-8", "strict")
+    h = hmac.new(key + salt, text, digest_alg)
+    hashed = h.hexdigest()
+    crypted = "%s$%s$%s" % (digest_alg, salt.decode(), hashed)
+    return crypted
 
 def dict2htmltable(data):
     html = ''
@@ -431,6 +444,21 @@ def index(request, secao="", ano="", nr=""):
     is_salc,is_fiscal,is_od,is_admin,is_odsubstituto = getPrivs(request)
     rows = Processo_requisitorio.objects.filter(secao_ano_nr__contains=secao+"_"+ano).order_by('-id')
     nr = "01" if not rows else nr
+    if not rows: # nenhum lançamento ainda
+        hashed = ""
+        row = {"dados":""}
+        arq_carona = []
+        arq_dispensa = []
+        arq_inex = []
+        validade = None
+    else:
+        row = Processo_requisitorio.objects.get(secao_ano_nr__contains=secao+"_"+ano+"_"+nr)
+        hashed = CRYPT(row.dados)
+        # pegar as url dos arquivos
+        arq_carona = Anexo.objects.filter(pr__exact=secao+"_"+ano+"_"+nr).filter(modo="carona")
+        arq_dispensa = Anexo.objects.filter(pr__exact=secao+"_"+ano+"_"+nr).filter(modo="dispensa")
+        arq_inex = Anexo.objects.filter(pr__exact=secao+"_"+ano+"_"+nr).filter(modo="inex")
+        validade = row.valido
     context = {
         "app": app,
         "ano": ano,
@@ -438,6 +466,8 @@ def index(request, secao="", ano="", nr=""):
         "nr": nr,
         "flash": "",
         "CHANGELOG": settings.CHANGELOG,
+        "MAXSIZE": settings.MAXSIZE, 
+        "ALLOWED": settings.ALLOWED,
         "auth": {"user": user, "is_logged_in": is_logged_in},
         "form_user": "ccc",
         "today": datetime.now().strftime("%d/%m/%Y"),
@@ -449,7 +479,9 @@ def index(request, secao="", ano="", nr=""):
         "validade": 'null',
         "retorno": secao,
         "SECOES": secoes,
-        "rows": rows
+        "rows": rows,
+        "row": row,
+        "hashed": hashed
     } 
     return render(request, 'requisicoes/index.html', context)
 
@@ -615,11 +647,25 @@ def profile(request):
     } 
     return render(request, 'requisicoes/profile.html', context)
 
+@csrf_exempt
 def api(request):
     if not request.user.is_authenticated: # somente usuários logados podem usar esta API
         return HttpResponse('Unauthorized', status=401)
+    def contas_do_user(user): # reinterpretação de usuarios_da_pessoa(pessoa)
+        contas = []
+        try:
+            p = Pessoa.objects.get(nm_login=user)
+        except Pessoa.DoesNotExist:
+            return contas
+        u_p = Usuario_Pessoa.objects.filter(dt_fim__isnull=True).filter(id_pessoa=p.id_pessoa)
+        for u in u_p:
+            try:
+                u_s = Usuario_Secao.objects.get(id_usuario=u.id_usuario.id_usuario)
+            except Usuario_Secao.DoesNotExist:
+                continue
+            contas = Usuario.objects.filter(id_usuario=u_s.id_usuario.id_usuario)
+        return [(r.id_usuario,r.nm_usuario) for r in contas]
     secoes_deste_user = getSecoesDesteUser(request)
-    contas_do_user = getContasDesteUser(request) # reinterpretação de usuarios_da_pessoa(pessoa)
     def anos_com_processos_desta_secao(secao):
         # Web2py:PyDAL way
         #dbpg(dbpg.processo_requisitorio.secao_ano_nr.contains(secao)).
@@ -654,10 +700,12 @@ def api(request):
     elif request.method =='POST':
         dic=dict(novo=False,edit=False,assinar=False,comentar=False,remline=False)
         vars = request.POST.copy()
+        if not vars:
+            vars = json.loads(request.body)
         dic['vars'] = vars.copy()
         for key, value in dic.items():
             if key in vars: dic.update({key:True if (vars[key] == "1" or vars[key] == "true") else False})
-        #clean data
+        #clean data TODO: review this
         vars['processo'] = vars.get('processo',"")
         allowed = list(app['allowed_ext'])
         if dic['novo']:
@@ -691,4 +739,142 @@ def api(request):
                     return JsonResponse(dic)
             except Exception as e:
                 return HttpResponse(mark_safe(f'<h2>{e=}</h2>'), status=403)
+        if dic['edit']:
+            try:
+                if vars['processo'].split("_")[0] not in secoes_deste_user: 
+                    return HttpResponse(mark_safe('<h2>Usuário não pertence a esta seção.</h2>'), status=403)
+                try:
+                    pr = Processo_requisitorio.objects.get(secao_ano_nr__contains=vars['processo'])
+                except Exception as e:
+                    dic['erro'] = str(e)
+                    return JsonResponse(dic)
+                if pr.valido!=None: 
+                    return HttpResponse(mark_safe('<h2>"Este processo já foi encerrado."</h2>'), status=400)
+                #1) Proteção contra caracteres mal escapados
+                try:
+                    dados = json.loads(pr['dados'])
+                except Exception as e:
+                    s = re.sub(r'(?<!\\)\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})', r'', pr.dados)
+                    dados = json.loads(s)
+                params = dict(secao=vars['processo'].split("_")[0],ano=vars['processo'].split("_")[-2],nr=vars['processo'].split("_")[-1])
+                esta_url='index?'+ urllib.parse.urlencode(params)
+                #2) Acabar com todas as assinaturas
+                campos_assinados = [ k for k,v in dados.items() if "ass_" in k]
+                for c in campos_assinados:
+                    dados.pop(c)
+                #3) Adicionar modo
+                lista_modos = ["gerente","carona","dispensa","inex","anul"]
+                if vars['modo'] in lista_modos and 'modo' not in dados: dados['modo'],dic['redirect2']=vars['modo'],esta_url
+                elif vars['modo'] in lista_modos and 'modo' in dados and dados['modo']!=vars['modo']: dados['modo'],dic['redirect2']=vars['modo'],esta_url
+                elif vars['modo'] in lista_modos and 'modo' in dados and dados['modo']==vars['modo']: dados['modo']=vars['modo']
+                else: dados['modo'],dic['redirect2']="gerente",esta_url
+                #4) Edição propriamente dita
+                dados[vars['campo']]=re.sub(r'(?<!\\)\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})' , r'', vars['valor'].replace('"',"'").replace('\n',"\\n"))
+                dados[vars['campo']+'_edited']='true'
+                pr.dados=json.dumps(dados, sort_keys=True )
+                pr.save()
+                if campos_assinados:
+                    dic['redirect2']=esta_url
+                dic['hashed'] = CRYPT(pr.dados)
+            except Exception as e:
+                msg = f'<div>{e=}<h2></h2><p>{str(pr["dados"])}</p></div>'
+                return HttpResponse(mark_safe(msg), status=400)
+        if dic['assinar']:
+            if 'senha' in vars and 'login' in vars:
+                import ldap
+                ldap_host = sped.get('host') if sped.get('host') else ldapconf['host']
+                l = ldap.initialize('ldap://'+ldap_host)
+                username = "cn=%s,%s" % (vars['login'], settings.BASE_DN)
+                password = vars['senha']
+                try:
+                    l.protocol_version = ldap.VERSION3
+                    l.simple_bind_s(username, password)
+                except Exception as error:
+                    return HttpResponse('Unauthorized', status=401)
+            else:
+                return HttpResponse('Bad Request', status=400)
+            # Pegar Post Nome Completo desse login no banco do sped
+            try:
+                import random,string
+            except:
+                return HttpResponse('Internal Server Error', status=500)
+            try:
+                pessoa = Pessoa.objects.get(nm_login__iexact=vars['login']).__dict__
+                pessoa['patente'] = posto_graduacao(pessoa['cd_patente'], 1)
+                militar = pessoa['patente'] + " " + pessoa['nm_guerra']+ " - "+ pessoa['nm_completo']
+            except Exception as e:
+                return HttpResponse(str(e), status=500)
+            dic['militar']=militar
+            # Pegar as contas dessa pessoa
+            try:
+                contas = contas_do_user(vars['login'])
+                dic['contas']=contas
+            except:
+                return HttpResponse('Internal Server Error', status=500)
+            # Comparar o cmapo da assinatura com as autorizações da pessoa que está assinando
+            conf = Configuracao.objects.all().last()
+            is_salc = False
+            is_fiscal = False
+            is_od = False
+            is_odsubstituto = False
+            odsubstituto = ""
+            autorizado = False
+            for contadesteuser in contas:
+                if conf:
+                    for id_usuario in json.loads(conf.contas_salc.replace("'",'"')):
+                        if Usuario.objects.get(id_usuario=id_usuario).nm_usuario==contadesteuser[1]:
+                            is_salc=True
+                    if conf.conta_fiscal and Usuario.objects.get(id_usuario=conf.conta_fiscal).nm_usuario==contadesteuser[1]:
+                        is_fiscal=True
+                    if conf.conta_od and Usuario.objects.get(id_usuario=conf.conta_od).nm_usuario==contadesteuser[1]:
+                        is_od=True
+                    if conf.conta_odsubstituto and Usuario.objects.get(id_usuario=conf.conta_odsubstituto).nm_usuario==contadesteuser[1]:
+                        is_odsubstituto=True
+            if "_requisitante" in vars['campo']: autorizado = True
+            elif "_fiscal" in vars['campo'] and is_fiscal: autorizado = True
+            elif "_od" in vars['campo'] and is_od: autorizado = True
+            elif "_od" in vars['campo'] and is_odsubstituto:
+                autorizado = True
+                odsubstituto = "Substituto"
+                dic['substituto']=vars['campo'].replace("ass_od","odsubstituto")
+            else: 
+                return HttpResponse('Unauthorized', status=401)
+            dic['is_salc']=is_salc
+            dic['is_fiscal']=is_fiscal
+            dic['is_od']=is_od
+            dic['is_odsubstituto']=is_odsubstituto
+            # Pegar o conjunto de dados deste documento
+            try:
+                pr = Processo_requisitorio.objects.get(secao_ano_nr__exact=vars['processo'])
+                #dbpg(dbpg.processo_requisitorio.secao_ano_nr==vars['processo']).select().first()
+                dados = json.loads(pr.dados)
+            except:
+                # Não encontrou?
+                return HttpResponse('Bad Request', status=400)
+            # gerar uma código de assinatura
+            lettersAndDigits = string.ascii_uppercase + string.digits
+            flag = 1
+            while flag>0 and flag<=10:
+                try:
+                    codigo = ''.join(random.choice(lettersAndDigits) for i in range(6))
+                    a = Assinatura(cod=codigo,militar=militar,pr=vars['processo'],documento_assinado=vars['campo'])
+                    a.save()
+                    flag=0
+                except Exception as e:
+                    # chegar aqui significa "unique key constrait violation" no campo código
+                    # Deve-se repetir essa iteração
+                    flag = 1
+            if flag>0:
+                return HttpResponse('Internal Server Error', status=500)
+            dic['codigo']=codigo
+            assinatura = militar + " - " + codigo + " - " + datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+            # Atualizar o conjunto de dados deste documento
+            dados[vars['campo']]=assinatura
+            dados[vars['campo']+'_edited']='true'
+            if "_od" in vars['campo']: dados[vars['campo'].replace("ass_od","odsubstituto")]=odsubstituto
+            pr.dados=json.dumps(dados, sort_keys=True)
+            pr.save()
+            dic['assinatura'] = assinatura
+            dic['hashed'] = CRYPT(pr.dados)
+            # TODO: remline
     return JsonResponse(dic)

@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 from pathlib import Path
 import json, os
-from appconfig import app, host
+from appconfig import app, host, sped, ldap as ldapconf
 import ldap
 from django_auth_ldap.config import LDAPSearch
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -151,5 +151,7 @@ AUTHENTICATION_BACKENDS = ['django_auth_ldap.backend.LDAPBackend',
 MEDIA_ROOT = BASE_DIR / 'uploads/'
 MEDIA_URL = '/uploads/'
 
+OMENDERECO = app.get('orgendereco')
+BASE_DN    = sped.get('base_dn')
 ALLOWED = app.get('allowed_ext')
 MAXSIZE = int(app.get('maxtotalfsize'))

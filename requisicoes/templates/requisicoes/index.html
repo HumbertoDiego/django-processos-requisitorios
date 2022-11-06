@@ -4205,7 +4205,7 @@ function isValidJSON(text) {
 }
 
 {% if row.dados %}
-    var dadosjson = `{{ row.dados }}`;
+    var dadosjson = `{{ row.dados | safe }}`;
     var valido = {{ validade }};
     //console.log(dadosjson);
     var contem_assinaturas = false;
@@ -4297,10 +4297,10 @@ function isValidJSON(text) {
             previewFileType: 'image',
             maxFileCount: 8,
             validateInitialCount: true,
-            maxFileSize:{{ MAXSIZE }},
+            maxFileSize: {{ MAXSIZE }},
             theme: 'fas',
             overwriteInitial: false,
-            allowedFileExtensions: {{ ALLOWED }},
+            allowedFileExtensions: {{ ALLOWED | safe }},
             preferIconicPreview: true, // this will force thumbnails to display icons for following file extensions
             previewFileIconSettings: {  //https://fontawesome.com/v5.15/icons?d=gallery&p=2
                 'doc': '<i class="fas fa-file-word text-primary"></i>',
@@ -4337,8 +4337,10 @@ function isValidJSON(text) {
                     return false;
                 }
             },
-            uploadUrl: '{% url "requisicoes:api" "up" "carona"  processo=secao|add:'_'|add:ano|add:'_'|add:nr %}',
-            deleteUrl: '{% url "requisicoes:api" "del" processo=secao|add:'_'|add:ano|add:'_'|add:nr %}',
+            {% with pr=secao|add:'_'|add:ano|add:'_'|add:nr %}
+            uploadUrl: '{% url "requisicoes:api" %}' +"/?up=1&modo=carona&processo="+ '{{ pr }}',
+            deleteUrl: '{% url "requisicoes:api" %}' +"/?del=1&modo=carona&processo="+ '{{ pr }}',
+            {% endwith %}
             initialPreviewAsData: true, // identify if you are sending preview data only and not the raw markup
             initialPreviewFileType: 'image', // image is the default and can be overridden in config below
             initialPreview: [
@@ -4375,7 +4377,7 @@ function isValidJSON(text) {
             maxFileSize:{{ MAXSIZE }},
             theme: 'fas',
             overwriteInitial: false,
-            allowedFileExtensions: {{ ALLOWED }},
+            allowedFileExtensions: {{ ALLOWED | safe }},
             preferIconicPreview: true, // this will force thumbnails to display icons for following file extensions
             previewFileIconSettings: {  //https://fontawesome.com/v5.15/icons?d=gallery&p=2
                 'doc': '<i class="fas fa-file-word text-primary"></i>',
@@ -4412,8 +4414,10 @@ function isValidJSON(text) {
                     return false;
                 }
             },
-            uploadUrl: '{% url "requisicoes:api" "up" "dispensa" processo  secao|add:'_'|add:ano|add:'_'|add:nr   %}',
-            deleteUrl: '{% url "requisicoes:api" "del" processo  secao|add:'_'|add:ano|add:'_'|add:nr   %}',
+            {% with pr=secao|add:'_'|add:ano|add:'_'|add:nr %}
+            uploadUrl: '{% url "requisicoes:api" %}' +"/?up=1&modo=dispensa&processo="+ '{{ pr }}',
+            deleteUrl: '{% url "requisicoes:api" %}' +"/?del=1&modo=dispensa&processo="+ '{{ pr }}',
+            {% endwith %}
             initialPreviewAsData: true, // identify if you are sending preview data only and not the raw markup
             initialPreviewFileType: 'image', // image is the default and can be overridden in config below
             initialPreview: [
@@ -4448,7 +4452,7 @@ function isValidJSON(text) {
             maxFileSize:{{ MAXSIZE }},
             theme: 'fas',
             overwriteInitial: false,
-            allowedFileExtensions: {{ ALLOWED }},
+            allowedFileExtensions: {{ ALLOWED | safe }},
             preferIconicPreview: true, // this will force thumbnails to display icons for following file extensions
             previewFileIconSettings: {  //https://fontawesome.com/v5.15/icons?d=gallery&p=2
                 'doc': '<i class="fas fa-file-word text-primary"></i>',
@@ -4485,8 +4489,10 @@ function isValidJSON(text) {
                     return false;
                 }
             },
-            uploadUrl: '{% url "requisicoes:api" "up" "inex" processo=secao|add:'_'|add:ano|add:'_'|add:nr %}',
-            deleteUrl: '{% url "requisicoes:api" "del" processo=secao|add:'_'|add:ano|add:'_'|add:nr %}',
+            {% with pr=secao|add:'_'|add:ano|add:'_'|add:nr %}
+            uploadUrl: '{% url "requisicoes:api" %}' +"/?up=1&modo=inex&processo="+ '{{ pr }}',
+            deleteUrl: '{% url "requisicoes:api" %}' +"/?del=1&modo=inex&processo="+ '{{ pr }}',
+            {% endwith %}
             initialPreviewAsData: true, // identify if you are sending preview data only and not the raw markup
             initialPreviewFileType: 'image', // image is the default and can be overridden in config below
             initialPreview: [
@@ -4880,11 +4886,12 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                 }
             }
         }
-        oReq.open("POST", "{% url 'requisicoes:api'%}?assinar=1");
+        oReq.open("POST", "{% url 'requisicoes:api'%}");
         //oReq.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
         oReq.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
         //var params = 'assinar=1&processo={{  secao|add:'_'|add:ano|add:'_'|add:nr  }}&campo='+campo ;
         var params = {
+            "assinar":"1",
             "processo":'{{ secao|add:'_'|add:ano|add:'_'|add:nr }}',
             "campo":campo,
             "login":login,
