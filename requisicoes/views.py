@@ -481,6 +481,10 @@ def index(request, secao="", ano="", nr=""):
         "SECOES": secoes,
         "rows": rows,
         "row": row,
+        "arq_carona": arq_carona,
+        "arq_dispensa": arq_dispensa,
+        "arq_inex": arq_inex,
+        "validade": json.dumps(validade),
         "hashed": hashed
     } 
     return render(request, 'requisicoes/index.html', context)
@@ -698,15 +702,24 @@ def api(request):
                 return HttpResponse(mark_safe(f'<h2>{e=}</h2>'), status=400)
         return JsonResponse(dic)
     elif request.method =='POST':
-        dic=dict(novo=False,edit=False,assinar=False,comentar=False,remline=False)
+        dic=dict(novo=False,edit=False,assinar=False,comentar=False,remline=False,up=False)
+        dic["del"] = False
         vars = request.POST.copy()
         if not vars:
             vars = json.loads(request.body)
-        dic['vars'] = vars.copy()
+        qs = urllib.parse.parse_qs(request.META['QUERY_STRING'])
+        for k, v in qs.items():
+            if isinstance(v,list):
+                if v:
+                    vars[k] = v[0]
+            elif isinstance(v,str):
+                if v:
+                    vars[k] = v
         for key, value in dic.items():
-            if key in vars: dic.update({key:True if (vars[key] == "1" or vars[key] == "true") else False})
+            if key in vars: dic.update({key:True if (vars[key] == ["1"] or vars[key] == "1" or vars[key] == "true") else False})
         #clean data TODO: review this
         vars['processo'] = vars.get('processo',"")
+        dic["path"] = request.path
         allowed = list(app['allowed_ext'])
         if dic['novo']:
             try:
@@ -757,7 +770,7 @@ def api(request):
                     s = re.sub(r'(?<!\\)\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})', r'', pr.dados)
                     dados = json.loads(s)
                 params = dict(secao=vars['processo'].split("_")[0],ano=vars['processo'].split("_")[-2],nr=vars['processo'].split("_")[-1])
-                esta_url='index?'+ urllib.parse.urlencode(params)
+                esta_url = '?'+urllib.parse.urlencode(params)
                 #2) Acabar com todas as assinaturas
                 campos_assinados = [ k for k,v in dados.items() if "ass_" in k]
                 for c in campos_assinados:
@@ -876,5 +889,193 @@ def api(request):
             pr.save()
             dic['assinatura'] = assinatura
             dic['hashed'] = CRYPT(pr.dados)
-            # TODO: remline
+        if dic['remline']:
+            """
+            """
+            if vars['processo'].split("_")[0] not in secoes_deste_user:
+                return HttpResponse(mark_safe('<h2>Usuário não pertence a esta seção.</h2>'), status=403)
+            try:
+                ordem=int(vars.pop('ord'))
+                pr = Processo_requisitorio.objects.get(secao_ano_nr__exact=vars['processo'])
+                dados = json.loads(pr.dados)
+            except:
+                # Não encontrou?
+                return HttpResponse('Bad Request', status=400)
+            if pr.valido!=None: 
+                return HttpResponse(mark_safe('<h2>Este processo já foi encerrado.</h2>'), status=400)
+            dic['vars']=[]
+            countlinhas_pedido=[]
+            variaveis_tipo_lista = ['nritem','descricaoitem','unidade','qtitens','valor','somaparcial','valorvencedor','valorcomparacao1',
+                                    'valorcomparacao2','valorcomparacao3','unit2','unit3']
+            variaveis_parecidas_com_lista = ['ncvalor']
+            dados_copy = dados.copy()
+            for k, v in dados_copy.items():
+                if "-"+str(ordem) in k:
+                    dic['vars'].append({k:dados.pop(k)})
+                for val in variaveis_tipo_lista:
+                    if val in k and "_edited" not in k and k not in variaveis_parecidas_com_lista:
+                        # BUG: tinha um erro de listindex out of range aqui
+                        # CORRIGIDO: adição de variaveis_parecidas_com_lista
+                        try:
+                            countlinhas_pedido.append(int(k.split("-")[1]))
+                        except:
+                            return HttpResponse(mark_safe(f'<h2>{k=}</h2>'), status=500)
+                        break
+            if countlinhas_pedido:
+                countlinhas_pedido = max(countlinhas_pedido)
+            else:
+                countlinhas_pedido = 1
+            dic['qtlinhas']=countlinhas_pedido
+            while countlinhas_pedido>=ordem:
+                ordem+=1
+                dados_copy = dados.copy()
+                for k, v in dados_copy.items():
+                    if "-"+str(ordem) in k:
+                        dados[k.replace("-"+str(ordem),"-"+str(ordem-1))]=dados.pop(k)
+                        countlinhas_pedido+=1
+            pr.dados = json.dumps(dados)
+            pr.save()
+        if dic["up"]:
+            if vars['processo'].split("_")[0] not in secoes_deste_user:
+                return JsonResponse({"error":"Usuário não pertence a esta seção."})
+            if vars["modo"] == "carona": modo = "carona"
+            elif vars["modo"] == "dispensa": modo = "dispensa"
+            elif vars["modo"] == "inex": modo = "inex"
+            else: return JsonResponse({"error":"Modo não permitido."})
+            
+            try:
+                anexos_deste_processo = Anexo.objects.filter(pr__exact=vars['processo'])
+                total = 0
+                for a in anexos_deste_processo:
+                    try:
+                        total+=int(a.tamanho)
+                    except:
+                        pass
+                
+                filesize = len(request.FILES['file-data'])
+                total+=filesize
+                if total>settings.MAXSIZE*1024: 
+                    return JsonResponse({"error":"Tamanho total dos arquivos (%s KB) maior que o limite máximo (%s KB)."%(str(total/1024),str(settings.MAXSIZE))})
+                pr = Processo_requisitorio.objects.get(secao_ano_nr__exact=vars['processo'])
+                if pr.valido!=None: 
+                    return JsonResponse({"error":"Este processo já foi encerrado."})
+                dados = json.loads(pr.dados)
+                dados['modo']=modo
+                filename = request.FILES['file-data'].name
+                if filename.split(".")[-1] in allowed:
+                    nid = Anexo(arquivo=request.FILES['file-data'],
+                                modo=modo,
+                                tamanho=str(filesize),
+                                name=filename,
+                                pr=vars['processo'])
+                    nid.save()
+                    pr.dados=json.dumps(dados)
+                    pr.save()
+                    return JsonResponse({
+                            'initialPreviewAsData' : True,
+                            'initialPreview' : 'download2/'+nid.name,
+                            "initialPreviewConfig": [
+                                {
+                                    'key' : nid.id,
+                                    'caption' : nid.name,
+                                    'size' : nid.tamanho,
+                                    'downloadUrl' : nid.arquivo.url,
+                                    'url' : reverse('requisicoes:api')+'?del=1&processo='+vars['processo']
+                                }
+                            ]
+                        })
+                else:
+                    return JsonResponse({"error":"Extensão não permitida"})
+            except Exception as e:
+                return HttpResponse(mark_safe(f'<h2>{e=}</h2>'), status=500)
+        if dic["del"]:
+            try:
+                if vars['processo'].split("_")[0] not in secoes_deste_user:
+                    return JsonResponse({"error":"Usuário não pertence a esta seção."})
+                pr = Processo_requisitorio.objects.get(secao_ano_nr__exact=vars['processo'])
+                if pr.valido!=None:
+                    return JsonResponse({"error":"Este processo já foi encerrado."})
+                try:
+                    anexo_row = Anexo.objects.get(id=int(vars['key']))
+                except:
+                    return JsonResponse({"error":"Arquivo não encontrado!"})
+                pr2 = anexo_row.pr
+                if pr2.split("_")[0] not in secoes_deste_user:
+                    return JsonResponse({"error":"Usuário não pertence a esta seção!"})
+                if pr2!=vars['processo']:
+                    return JsonResponse({"error":"Arquivo não pertence a este processo!"})
+                anexo_row.delete()
+            except Exception as e:
+                return HttpResponse(mark_safe(f'<h2>{e=}</h2>'), status=500)
+    elif request.method =='PUT':
+        dic=dict(validar=False,invalidar=False,clonar=False)
+        vars = request.PUT.copy()
+        if not vars:
+            vars = json.loads(request.body)
+        dic['vars'] = vars.copy()
+        for key, value in dic.items():
+            if key in vars: dic.update({key:True if (vars[key] == "1" or vars[key] == "true") else False})
+        if dic['validar']: # TODO: testar
+            # Pegar o conjunto de dados deste documento
+            try:
+                pr = Processo_requisitorio.objects.get(secao_ano_nr__exact=vars['processo'])
+            except:
+                # Não encontrou?
+                return HttpResponse('Bad Request', status=400)
+            if pr.valido!=None:
+                return HttpResponse('Este processo já foi encerrado', status=400)
+            pr['valido']=True
+            params = dict(secao=vars['processo'].split("_")[0],ano=vars['processo'].split("_")[-2],nr=vars['processo'].split("_")[-1])
+            dic['redirect2']='?'+ urllib.parse.urlencode(params)
+            pr.save()
+        if dic['invalidar']: # TODO: testar
+            # Pegar o conjunto de dados deste documento
+            try:
+                pr = Processo_requisitorio.objects.get(secao_ano_nr__exact=vars['processo'])
+            except:
+                # Não encontrou?
+                return HttpResponse('Bad Request', status=400)
+            if pr.valido!=None: 
+                return HttpResponse('Este processo já foi encerrado', status=400)
+            pr.valido=False
+            params = dict(secao=vars['processo'].split("_")[0],ano=vars['processo'].split("_")[-2],nr=vars['processo'].split("_")[-1])
+            dic['redirect2']='?'+ urllib.parse.urlencode(params)
+            pr.save()
+        if dic['clonar']: # TODO: testar
+            # Pegar o conjunto de dados deste documento
+            try:
+                pr = Processo_requisitorio.objects.get(secao_ano_nr__exact=vars['processo'])
+                dados = json.loads(pr.dados)
+                secao=vars['secao']
+                ano=vars['ano'] if 'ano' in vars else datetime.now().strftime('%Y') # Brecha proposital
+                resumo=vars['resumo']
+                groups = secoes_deste_user()
+            except: # Não encontrou?
+                return HttpResponse('Bad Request', status=400)
+            # Checar novamente se ele tem permissão para inserir nesta seção
+            if secao not in groups:
+                return HttpResponse('Unauthorized', status=403)
+            # montagem dos dados a serem inseridos
+            try:
+                last = Processo_requisitorio.objects.filter(secao_ano_nr__contains=secao+"_"+ano).order_by(id).last()
+                # TODO: checar oq acpntece qd a seção n tem processos. last=None ou dá erro?
+                nr = "%02d"%(int(last.secao_ano_nr.split("_")[-1])+1) if last else "01"
+                dados["data"]=datetime.now().strftime('%d/%m/%Y')
+                #1) Acabar com todas as assinaturas
+                campos_assinados = [ k for k,v in dados.items() if "ass_" in k]
+                for c in campos_assinados:
+                    dados.pop(c)
+            except:
+                return HttpResponse('Internal Server Error', status=500)
+            # Inserção
+            pr = Processo_requisitorio(secao_ano_nr=secao+'_'+ano+'_'+nr,
+                                  resumo=resumo,
+                                  dados=json.dumps(dados))
+            dic['nr']=nr
+            params = dict(secao=secao,ano=ano,nr=nr)
+            dic['redirect2']='?'+ urllib.parse.urlencode(params)
+            pr.save()
+        dic['vars'] = vars.copy()
+    elif request.method =='DELETE':
+        dic = dict()
     return JsonResponse(dic)

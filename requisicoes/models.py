@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.html import mark_safe
 from django.core.validators import int_list_validator, FileExtensionValidator
 import os
+from uuid import uuid4
 from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from django.conf import settings
@@ -38,8 +39,12 @@ class Assinatura(models.Model):
 
 def update_filename(instance, filename):
     path = "anexos/"
-    format = instance.userid + instance.transaction_uuid + instance.file_extension
-    return os.path.join(path, format)
+    if instance.pk:
+        i = cid = "cid_%s" % (instance.pk,)
+    else:
+        i = rid = "%s" % (uuid4().hex,)
+    #return os.path.join(path, i+"."+filename)
+    return os.path.join(path, i ,filename)
 
 def file_size(value): # add this to some file where you can import it from
     limit = settings.MAXSIZE * 1024
@@ -47,7 +52,7 @@ def file_size(value): # add this to some file where you can import it from
         raise ValidationError('Max image size: %s KB'%(settings.MAXSIZE))
 
 class Anexo(models.Model):
-    pr = models.CharField(max_length=100 ,unique=True)
+    pr = models.CharField(max_length=100)
     modo = models.CharField(max_length=100)
     tamanho = models.CharField(max_length=100)
     name = models.CharField(max_length=100)
@@ -62,9 +67,14 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
     Deletes file from filesystem
     when corresponding `Anexo` object is deleted.
     """
-    if instance.file:
-        if os.path.isfile(instance.file.path):
-            os.remove(instance.file.path)
+    if instance.arquivo:
+        if os.path.isfile(instance.arquivo.path):
+            os.remove(instance.arquivo.path)
+        # tb o uuid/cid parente folder
+        parent = os.path.dirname(instance.arquivo.path)
+        if not os.path.isfile(parent):
+            os.rmdir(parent)
+
 
 @receiver(models.signals.pre_save, sender=Anexo)
 def auto_delete_file_on_change(sender, instance, **kwargs):

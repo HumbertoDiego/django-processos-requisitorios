@@ -1383,7 +1383,7 @@ V - órgão não participante - órgão ou entidade da administração pública 
                                             {% if f.tamanho|add:"0" > 1024 %}
                                                 {% with b="Kb" size=f.tamanho|divide:1024|add:"0"|add:"" %}
                                                 <li>
-                                                    <a href="{% url download2 f.arquivo %}">
+                                                    <a href="{{ f.arquivo.url }}">
                                                         {{ f.name }}
                                                     </a>
                                                     <span>
@@ -1394,7 +1394,7 @@ V - órgão não participante - órgão ou entidade da administração pública 
                                             {% else %}
                                                 {% with b="B" size=f.tamanho%}
                                                 <li>
-                                                    <a href="{% url download2 f.arquivo %}">
+                                                    <a href="{{ f.arquivo.url }}">
                                                         {{ f.name }}
                                                     </a>
                                                     <span>
@@ -2290,7 +2290,7 @@ V - órgão não participante - órgão ou entidade da administração pública 
                                             {% if f.tamanho|add:"0" > 1024 %}
                                                 {% with b="Kb" size=f.tamanho|divide:1024|add:"0"|add:"" %}
                                                 <li>
-                                                    <a href="{% url download2 f.arquivo %}">
+                                                    <a href="{{ f.arquivo.url }}">
                                                         {{ f.name }}
                                                     </a>
                                                     <span>
@@ -2301,7 +2301,7 @@ V - órgão não participante - órgão ou entidade da administração pública 
                                             {% else %}
                                                 {% with b="B" size=f.tamanho%}
                                                 <li>
-                                                    <a href="{% url download2 f.arquivo %}">
+                                                    <a href="{{ f.arquivo.url }}">
                                                         {{ f.name }}
                                                     </a>
                                                     <span>
@@ -3162,7 +3162,7 @@ V - órgão não participante - órgão ou entidade da administração pública 
                                         {% if f.tamanho|add:"0" > 1024 %}
                                             {% with b="Kb" size=f.tamanho|divide:1024|add:"0"|add:"" %}
                                             <li>
-                                                <a href="{% url download2 f.arquivo %}">
+                                                <a href="{{ f.arquivo.url }}">
                                                     {{ f.name }}
                                                 </a>
                                                 <span>
@@ -3173,7 +3173,7 @@ V - órgão não participante - órgão ou entidade da administração pública 
                                         {% else %}
                                             {% with b="B" size=f.tamanho%}
                                             <li>
-                                                <a href="{% url download2 f.arquivo %}">
+                                                <a href="{{ f.arquivo.url }}">
                                                     {{ f.name }}
                                                 </a>
                                                 <span>
@@ -4338,29 +4338,29 @@ function isValidJSON(text) {
                 }
             },
             {% with pr=secao|add:'_'|add:ano|add:'_'|add:nr %}
-            uploadUrl: '{% url "requisicoes:api" %}' +"/?up=1&modo=carona&processo="+ '{{ pr }}',
-            deleteUrl: '{% url "requisicoes:api" %}' +"/?del=1&modo=carona&processo="+ '{{ pr }}',
+            uploadUrl: '{% url "requisicoes:api" %}' +"?up=1&modo=carona&processo="+ '{{ pr }}',
+            deleteUrl: '{% url "requisicoes:api" %}' +"?del=1&modo=carona&processo="+ '{{ pr }}',
             {% endwith %}
             initialPreviewAsData: true, // identify if you are sending preview data only and not the raw markup
             initialPreviewFileType: 'image', // image is the default and can be overridden in config below
             initialPreview: [
                 {% for f in arq_carona %}
-                "{% url 'download2' f.arquivo %}",
+                "{{ f.arquivo.url }}",
                 {% endfor %}
             ],
             initialPreviewConfig: [
             {% for f in arq_carona %}
                 {% with ext=f.name|split:"."|last %}
                     {% if ext in 'txt,ini,md,json,geojson' %}
-                        {caption:"{{ f.name }}", type:"text", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                        {caption:"{{ f.name }}", type:"text", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                     {% elif ext in 'png,jpg,jpeg' %}
-                        {caption:"{{ f.name }}", type:"image", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                        {caption:"{{ f.name }}", type:"image", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                     {% elif ext in 'odt,ods,odp,doc,docx,xls,xlsx,ppt,pptx' %}
-                        {caption:"{{ f.name }}", type:"office", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                        {caption:"{{ f.name }}", type:"office", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                     {% elif ext in 'pdf' %}
-                        {caption:"{{ f.name }}", type:"pdf", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                        {caption:"{{ f.name }}", type:"pdf", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                     {% else %}
-                        {caption:"{{ f.name }}", type:"other", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                        {caption:"{{ f.name }}", type:"other", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                     {% endif %}
                 {% endwith %}
             {% endfor %}
@@ -4422,22 +4422,22 @@ function isValidJSON(text) {
             initialPreviewFileType: 'image', // image is the default and can be overridden in config below
             initialPreview: [
                 {% for f in arq_dispensa %}
-                "{% url 'download2' f.arquivo %}",
+                "{{ f.arquivo.url }}",
                 {% endfor %}
             ],
             initialPreviewConfig: [
                 {% for f in arq_dispensa %}
                     {% with ext=f.name|split:"."|last %}
                         {% if ext in 'txt,ini,md,json,geojson' %}
-                            {caption:"{{ f.name }}", type:"text", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                            {caption:"{{ f.name }}", type:"text", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                         {% elif ext in 'png,jpg,jpeg' %}
-                            {caption:"{{ f.name }}", type:"image", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                            {caption:"{{ f.name }}", type:"image", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                         {% elif ext in 'odt,ods,odp,doc,docx,xls,xlsx,ppt,pptx' %}
-                            {caption:"{{ f.name }}", type:"office", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                            {caption:"{{ f.name }}", type:"office", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                         {% elif ext in 'pdf' %}
-                            {caption:"{{ f.name }}", type:"pdf", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                            {caption:"{{ f.name }}", type:"pdf", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                         {% else %}
-                            {caption:"{{ f.name }}", type:"other", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                            {caption:"{{ f.name }}", type:"other", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                         {% endif %}
                     {% endwith %}
                 {% endfor %}
@@ -4497,22 +4497,22 @@ function isValidJSON(text) {
             initialPreviewFileType: 'image', // image is the default and can be overridden in config below
             initialPreview: [
                 {% for f in arq_inex %}
-                "{% url 'download2' f.arquivo %}",
+                "{{ f.arquivo.url }}",
                 {% endfor %}
             ],
             initialPreviewConfig: [
             {% for f in arq_inex %}
                 {% with ext=f.name|split:"."|last %}
                     {% if ext in 'txt,ini,md,json,geojson' %}
-                        {caption:"{{ f.name }}", type:"text", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                        {caption:"{{ f.name }}", type:"text", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                     {% elif ext in 'png,jpg,jpeg' %}
-                        {caption:"{{ f.name }}", type:"image", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                        {caption:"{{ f.name }}", type:"image", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                     {% elif ext in 'odt,ods,odp,doc,docx,xls,xlsx,ppt,pptx' %}
-                        {caption:"{{ f.name }}", type:"office", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                        {caption:"{{ f.name }}", type:"office", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                     {% elif ext in 'pdf' %}
-                        {caption:"{{ f.name }}", type:"pdf", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                        {caption:"{{ f.name }}", type:"pdf", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                     {% else %}
-                        {caption:"{{ f.name }}", type:"other", downloadUrl:"{% url 'download2' f.arquivo %}",size:{{ f.tamanho }}, key:{{ f.id }} },
+                        {caption:"{{ f.name }}", type:"other", downloadUrl:"{{ f.arquivo.url }}",size:{{ f.tamanho }}, key:{{ f.id }} },
                     {% endif %}
                 {% endwith %}
                 {% endfor %}
@@ -4826,9 +4826,10 @@ $('[id^=gerpar][id$=popover]').on('show.bs.modal', function (e) {
                     }
                 }
             }
-            oReq.open("POST", "{% url 'requisicoes:api' %}?remline=1");
+            oReq.open("POST", "{% url 'requisicoes:api' %}");
             oReq.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
             var params = {
+                "remline":"1",
                 "processo":'{{ secao|add:'_'|add:ano|add:'_'|add:nr }}',
                 "ord":element.id.split("-")[1]
             }
