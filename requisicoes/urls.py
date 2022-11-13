@@ -8,7 +8,7 @@ urlpatterns = [
     path('index/?secao=<secao>&ano=<ano>&nr=<nr>', views.index, name='index'),
     path('login', views.userlogin, name='login'),
     path('logout', views.userlogout, name='logout'),
-    path('pesquisar/', views.login, name='pesquisar'),
+    path('pesquisar/', views.pesquisar, name='pesquisar'),
     path('profile/', views.profile, name='profile'),
     path('conf/', views.conf, name='conf'),
     path('getodt/<str:processo>', views.getodt, name='getodt'),

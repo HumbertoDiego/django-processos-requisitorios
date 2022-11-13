@@ -5,15 +5,19 @@ from django.urls import reverse
 from django.conf import settings
 from django.utils.html import mark_safe
 from django import forms
-from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect, HttpResponseNotFound
 from django.contrib.auth import authenticate, login, logout
 import json
 from sped.models import Secao, Pessoa, Usuario, Usuario_Pessoa, Usuario_Secao
-from .models import Configuracao, Processo_requisitorio, Anexo, Assinatura
+from .models import Configuracao, Processo_requisitorio, Anexo, Assinatura, Comentario
 import urllib
 from django.views.decorators.csrf import csrf_exempt
 import re
+from django.db.models import Q
+import os
 
+######## Funções de apoio
+ 
 def CRYPT(text, key="", salt="", digest_alg="sha256"):
     """Generate hash with the given text using the specified digest algorithm."""
     import hmac
@@ -269,7 +273,6 @@ def posto_graduacao(cod_posto_grad, descricao_e_abreviatura=1):
         abreviatura += ' - ' + descricao
     return abreviatura
 
-
 def get_secoes():
         tempo = 60*60*5
         # em Web2py:PyDAL
@@ -285,13 +288,13 @@ def get_secoes():
         #t = cache.ram('secoes', lambda: S, time_expire=tempo)
         return S if S else ["secoes?"]
 
-def getcomentarios(request):
-    context = {
-        "flash":"",
-        "CHANGELOG": settings.CHANGELOG
-    } 
-    return render(request, 'requisicoes/index.html', context)
+def my_redirect(url,params):
+    response = redirect(url)
+    query_string = urllib.parse.urlencode(params)
+    response['Location'] += '?' + query_string
+    return response
 
+#########
 # /requisicoes/default/getanos?secao=S3
 """
 def getanos():
@@ -372,6 +375,13 @@ def getContasDesteUser(request):
     else:
         return []
 
+def getcomentarios(request,processo):
+    rows=Comentario.objects.filter(pr__iexact=processo)
+    retorno = []
+    for row in rows:
+        retorno.append({"autor":row.autor,"comentario":row.comentario,"datahora":row.datahora.strftime("%d-%m-%Y %H:%M:%S")})
+    return JsonResponse(retorno, safe=False)
+
 def getPrivs(request):
     is_salc,is_fiscal,is_od,is_admin,is_odsubstituto = False,False,False,False,False
     conf = Configuracao.objects.latest('id')
@@ -399,31 +409,126 @@ def getPrivs(request):
             pass
     return is_salc,is_fiscal,is_od,is_admin,is_odsubstituto
 
-
-def getodt(request,secao):
-    context = {
-        "flash":"",
-        "CHANGELOG": settings.CHANGELOG
-    } 
-    return render(request, 'requisicoes/index.html', context)
-
-def my_redirect(url,params):
-    response = redirect(url)
-    query_string = urllib.parse.urlencode(params)
-    response['Location'] += '?' + query_string
-    return response
+def getodt(request,processo):
+    def teste_encoding(a):
+        if hasattr(a, 'decode'): return a.decode("utf-8")
+        else: return a
+    processo = urllib.parse.unquote(processo)
+    try:
+        row = Processo_requisitorio.objects.get(secao_ano_nr=processo)
+    except:
+        return HttpResponse('Bad Request', status=400)
+    varsjson = {}
+    try:
+        dados = json.loads(row.dados)
+    except ValueError:
+        # query = dbpg.processo_requisitorio.dados.like('%\\x%')
+        # os dados devem ter caracteres unicode no formato \u00VV e não \xVV, editar pelo pgadmin4 causa esse bug!!!
+        # Solução é encotrar, copiar os dados, substituir no sublime \x por \u00 e atualizar. Se precisar voltar a valdiade para null:
+        #UPDATE public.processo_requisitorio SET valido=null WHERE id=1;-- é o modo correto de editar a validade
+        dados = json.loads(row.dados.decode("unicode_escape")) # TODO Aprender como converter em Python 2
+        #return response.json({"vars":row.dados,"erro":str(e)+str(e.args)})
+    try:
+        from relatorio.templates.opendocument import Template
+        from io import open, BytesIO
+        meses = [u"Janeiro", u"Fevereiro", u"Março", u"Abril", u"Maio", u"Junho", u"Julho", u"Agosto", u"Setembro" , u"Outubro", u"Novembro", u"Dezembro"]
+        mes_abr = [m[:3] for m in meses]
+        fbase = open(os.path.join(settings.BASE_DIR,'vars.json'),'r', encoding="utf-8").read()
+        varsjson = json.loads(fbase)
+        varsjson.update(dados)
+        dicmodos = {"gerente":"Gerente/Participante", "carona":"Carona","dispensa":u"Dispensa de Licitação","inex":"Inexigibilidade"}
+        for quem in ["requisitante","fiscal","od"]:
+            for modo in ["gerente", "carona","dispensa","inex","anul"]:
+                for doc in ["pr","pedido","comparativo","justificativa","etp"]:
+                    if "ass_"+quem+"_"+doc+"_"+modo not in varsjson:
+                        varsjson["ass_"+quem+"_"+doc+"_"+modo] = ""
+        varsjson['hash']=str(CRYPT(row.dados))
+        try:
+            varsjson['secao']=processo.split("_")[0]
+            varsjson['ano']=processo.split("_")[1]
+            varsjson['nr']=processo.split("_")[2]
+        except:
+            return HttpResponse('Bad Request', status=400)
+        varsjson['dataextenso']= varsjson["data"].split("/")[0] + " de " + meses[int(varsjson["data"].split("/")[1])-1]
+        varsjson['dataresumidalower']= teste_encoding(varsjson["data"].split("/")[0]+" "+mes_abr[int(varsjson["data"].split("/")[1])-1])
+        varsjson['dataresumidalower']= varsjson['dataresumidalower']
+        varsjson['cidadeestado'] = app['orgcidade']+"/"+app['orgestadoabrev']#"Manaus"+"/"+"AM" ##
+        varsjson['omextenso'] = app['orgextenso'].upper() #"4º CENTRO DE GEOINFORMAÇÃO"#
+        varsjson['omabrev'] = app['orgabrev'] #"4º CGEO"#
+        varsjson['omendereco'] = app['orgendereco'] #"Avenida Marechal Bittencourt, nº 97, bairro Santo Antônio, CEP – 69029-160, em Manaus/AM"#
+        varsjson['timbre_linha1'] = app['timbre_linha1'] #"MINISTÉRIO DA DEFESA"#
+        varsjson['timbre_linha2'] = app['timbre_linha2'] #"EXÉRCITO BRASILEIRO"#
+        varsjson['omsup'] = app['timbre_linha3'] #"DCT - DSG"#
+        varsjson['objs'] = []
+        cp = varsjson.copy()
+        for k in cp:
+            if "_edited" in k: varsjson.pop(k)
+            elif "odsubstituto" in k:
+                if varsjson[k]!="":
+                    varsjson[k]=varsjson[k]+" "
+        qttotaldeitens = []
+        for k,v in varsjson.items():
+            if "nritem" in k or "catmatitem" in k or "descricaoitem" in k or "qtitens" in k or "valorfornecedor2" in k or "somaparcial" in k :
+                qttotaldeitens.append(k.split("-")[1])
+        for ordem in sorted(set(qttotaldeitens)):
+            varsjson['objs'].append({
+                    'nritem':varsjson['nritem-'+ordem].replace("\\n","") if 'nritem-'+ordem in varsjson else "",
+                    'descricaoitem':varsjson['descricaoitem-'+ordem] if 'descricaoitem-'+ordem in varsjson else "",
+                    'u':varsjson['unidade-'+ordem] if 'unidade-'+ordem in varsjson else "",
+                    'unidade':varsjson['unidade-'+ordem] if 'unidade-'+ordem in varsjson else "",
+                    'qtitens':varsjson['qtitens-'+ordem] if 'qtitens-'+ordem in varsjson else "",
+                    'valor':varsjson['valor-'+ordem] if 'valor-'+ordem in varsjson else "",
+                    'catmatitem':varsjson['catmatitem-'+ordem] if 'catmatitem-'+ordem in varsjson else "",
+                    'somaparcial':varsjson['somaparcial-'+ordem] if 'somaparcial-'+ordem in varsjson else "",
+                    'valorvencedor':varsjson['valorvencedor-'+ordem] if 'valorvencedor-'+ordem in varsjson else "",
+                    'valorfornecedor1':varsjson['valorfornecedor1-'+ordem] if 'valorfornecedor1-'+ordem in varsjson else "",
+                    'valorfornecedor2':varsjson['valorfornecedor2-'+ordem] if 'valorfornecedor2-'+ordem in varsjson else "",
+                    'valorfornecedor3':varsjson['valorfornecedor3-'+ordem] if 'valorfornecedor3-'+ordem in varsjson else "",
+                    'valorfornecedor4':varsjson['valorfornecedor4-'+ordem] if 'valorfornecedor4-'+ordem in varsjson else "",
+                    'valorcomparacao1':varsjson['valorcomparacao1-'+ordem] if 'valorcomparacao1-'+ordem in varsjson else "",
+                    'valorcomparacao2':varsjson['valorcomparacao2-'+ordem] if 'valorcomparacao2-'+ordem in varsjson else "",
+                    'valorcomparacao3':varsjson['valorcomparacao3-'+ordem] if 'valorcomparacao3-'+ordem in varsjson else "",
+                    'unit2':varsjson['unit2-'+ordem] if 'unit2-'+ordem in varsjson else "",
+                    'unit3':varsjson['unit3-'+ordem] if 'unit3-'+ordem in varsjson else ""
+                    })
+        modelo = "" if varsjson['modo']=="gerente" else "_dispensa" if varsjson['modo']=="dispensa" else "_anul" if varsjson['modo']=="anul" else "_carona"
+        varsjson['aquisicaopor'] = dicmodos.get(varsjson['modo'],"Gerente") if varsjson['modo']!="gerente" else u"Pregão "+varsjson['gerpar']
+        ## SolUÇÃO para: "'ascii' codec can't decode byte 0xc3 in position 9: ordinal not in range(128)"
+        # varsjson["key"] = teste_encoding(varsjson["key"])
+        filename2=os.path.join(settings.BASE_DIR,'requisicoes','static','modelos','pr'+modelo+'_model.odt')
+        basic = Template(source='', filepath=filename2)
+        bufferimg = BytesIO()
+        bufferimg.write(basic.generate(o=varsjson).render().getvalue())
+        bufferimg.seek(0)
+        try: 
+            response = HttpResponse(bufferimg, content_type='application/vnd.oasis.opendocument.text')
+            response['Content-Disposition'] = 'attachment; filename="%s"'%("PR_"+processo+".odt")
+        except IOError:
+            response = HttpResponseNotFound('<h1>File not exist</h1>')
+        return response
+    except Exception as e:
+        return JsonResponse({"vars":varsjson,"erro":str(e)+str(e.args)})
 
 ############################################### Fim funções de apoio ##########################################
 
 def index(request, secao="", ano="", nr=""):
     retorno = ""
-    if request.GET.get('secao_change',False):
-        params = dict(secao=request.GET.get('sec',''),ano=request.GET['ano'],nr="01")
+    qs = urllib.parse.parse_qs(request.META['QUERY_STRING'])
+    if not qs:
+        qs = urllib.parse.parse_qs(request.META['PATH_INFO'])
+    if not qs:
+        qs = request.GET.copy()
+    for k, v in qs.items():
+        if isinstance(v,list):
+            if v:
+                qs[k] = v[0]       
+    if qs.get('secao_change',False):
+        params = dict(secao=qs.get('sec',''),ano=qs.get('ano',''),nr="01")
         return my_redirect(reverse('requisicoes:index'),params)
-    secao = request.GET.get('secao') if request.GET.get('secao') else app['secao_escape']
-    nr = request.GET['nr'] if request.GET.get('nr') else "01"
-    ano = request.GET['ano'] if request.GET.get('ano') else date.today().strftime('%Y')
-    if not request.GET.get('secao') or not request.GET.get('ano') or not request.GET.get('nr'):
+    secao = qs.get('secao',app['secao_escape'])
+    nr = qs.get('nr', "01")
+    ano = qs.get('ano', date.today().strftime('%Y'))
+    if not qs.get('secao') or not qs.get('ano') or not qs.get('nr'):
         params = dict(secao=secao,ano=ano,nr=nr)
         return my_redirect(reverse('requisicoes:index'),params)
     # Validação das seções
@@ -440,7 +545,6 @@ def index(request, secao="", ano="", nr=""):
     if request.user.is_authenticated:
         user = request.user
         is_logged_in = True
-        retorno = "Usuário existente"
     is_salc,is_fiscal,is_od,is_admin,is_odsubstituto = getPrivs(request)
     rows = Processo_requisitorio.objects.filter(secao_ano_nr__contains=secao+"_"+ano).order_by('-id')
     nr = "01" if not rows else nr
@@ -477,7 +581,7 @@ def index(request, secao="", ano="", nr=""):
         "is_od": is_od,
         "is_fiscal": is_fiscal,
         "validade": 'null',
-        "retorno": secao,
+        "retorno": retorno,
         "SECOES": secoes,
         "rows": rows,
         "row": row,
@@ -489,25 +593,190 @@ def index(request, secao="", ano="", nr=""):
     } 
     return render(request, 'requisicoes/index.html', context)
 
-def userlogin(request):
-    if request.POST.get('username') and request.POST.get('password'):
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        user = authenticate(username=username, password=password)
-        if user is not None:
-            login(request, user)
-    return redirect('requisicoes:index')
-
-def userlogout(request):
-    logout(request)
-    return redirect('requisicoes:index')
-
 def pendencias(request, quem):
+    quem = quem if quem else "od"
+    q =request.GET.get("q","")
+    if not q:
+         return my_redirect(reverse('requisicoes:pendencias',args=[quem]),dict(q=datetime.now().strftime('%Y')))
+    msg = ""
+    user = None
+    is_logged_in = False
+    if request.user.is_authenticated:
+        user = request.user
+        is_logged_in = True
+    is_salc,is_fiscal,is_od,is_admin,is_odsubstituto = getPrivs(request)
+    if quem in ["fiscal", "od"]:
+        rows = Processo_requisitorio.objects.filter(valido=True).filter(secao_ano_nr__contains=q).order_by('id')
+    elif quem in ["requisitante","salc"]:
+        rows = Processo_requisitorio.objects.filter(valido=None).filter(secao_ano_nr__contains=q).order_by('id')
+    else:
+        rows = []
+    # Checagem das assinaturas dessas rows
+    shows2 = []
+    lista_assinaturas = []
+    for row in rows:
+        mostrar = False
+        show={}
+        hidden={}
+        try:
+            dic = json.loads(row.dados)
+        except Exception as e:
+            s = re.sub(r'(?<!\\)\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})', r'', row.dados)
+            dic = json.loads(s)
+            msg = str(e)+"---- Processo: ("+str(row.id)+") "+str(row.secao_ano_nr)
+        modo = dic.get('modo','gerente')
+        if quem=="salc": w="requisitante"
+        else: w=quem
+        if modo == "anul":
+            lista_assinaturas = ["ass_"+w+"_pr_"+modo]
+        elif modo == "inex":
+            lista_assinaturas = ["ass_"+w+"_pr_"+modo,"ass_"+w+"_pedido_"+modo,"ass_"+w+"_justificativa_"+modo,"ass_"+w+"_etp_"+modo]
+        elif modo == "dispensa":
+            lista_assinaturas = ["ass_"+w+"_pr_"+modo,"ass_"+w+"_pedido_"+modo,"ass_"+w+"_justificativa_"+modo]
+        elif modo == "carona":
+            lista_assinaturas = ["ass_"+w+"_pr_"+modo,"ass_"+w+"_pedido_"+modo,"ass_"+w+"_justificativa_"+modo, "ass_"+w+"_etp_"+modo]
+        elif modo == "gerente":
+            lista_assinaturas = ["ass_"+w+"_pr_gerente","ass_"+w+"_pedido_gerente"]
+        if quem in ["requisitante","salc"] and modo not in[ "gerente","dispensa"]:
+            lista_assinaturas.append("ass_"+w+"_comparativo_"+modo)
+        if quem=="salc":
+            if all(l in dic for l in lista_assinaturas):
+                mostrar = True
+        else:
+            for l in lista_assinaturas:
+                if l not in dic:
+                    mostrar = True
+                    break
+        if mostrar:
+            lista_desejados=["data","modo","remetente","beneficios-justificativa"]    
+            dados_copy = dic.copy()
+            for k,v in dados_copy.items():
+                if k in lista_desejados:
+                    show[k.upper().replace("_"," ")] = dic.pop(k)
+                elif "ass_" in k and "edited" not in k and modo in k:
+                    show[k.upper().replace("_"," ")] = dic.pop(k)
+            hidden['resumo']=row.resumo
+            hidden['ano']=row.secao_ano_nr.split("_")[-2]
+            hidden['nr']=row.secao_ano_nr.split("_")[-1]
+            hidden['secao']=row.secao_ano_nr.split("_")[0]
+            hidden['valido']="Válido" if row.valido==True else "Inválido" if row.valido==False else "Em trabalho"
+            beautify_show = dict2htmltable(show)
+            shows2.append([beautify_show,hidden])
+
     context = {
-        "flash":"",
-        "CHANGELOG": settings.CHANGELOG
+        "msg":msg,
+        "CHANGELOG": settings.CHANGELOG,
+        "shows":shows2,
+        "auth":{"user": user, "is_logged_in": is_logged_in},
+        "len_rows": len(shows2),
+        "is_salc":is_salc,"is_admin":is_admin,"is_od":is_od,"is_fiscal":is_fiscal,
+         "q":"Pendências do(a) "+quem.upper()
     } 
-    return render(request, 'requisicoes/index.html', context)
+    return render(request, 'requisicoes/pesquisar.html', context)
+
+def pesquisar(request):
+    msg = ""
+    user = None
+    is_logged_in = False
+    if request.user.is_authenticated:
+        user = request.user
+        is_logged_in = True
+    is_salc,is_fiscal,is_od,is_admin,is_odsubstituto = getPrivs(request)
+    rows =[]
+    q = request.GET.get('q',"")
+    if q:
+        rows = Processo_requisitorio.objects.filter(Q(secao_ano_nr__contains=q) | Q(resumo__contains=q) | Q(dados__contains=q)).order_by('id')
+    shows =[]
+    for row in rows:
+        show={}
+        hidden={}
+        try:
+            dados = json.loads(row.dados)
+        except:
+            dados = json.loads('{}')
+        modo=dados["modo"] if "modo" in dados else "gerente"
+        lista_desejados=["data","modo","remetente","beneficios-justificativa"]    
+        dados_copy = dados.copy()
+        for k,v in dados_copy.items():
+            if k in lista_desejados:
+                show[k.upper().replace("_"," ")] = dados.pop(k)
+            elif "ass_" in k and "edited" not in k and modo in k:
+                show[k.upper().replace("_"," ")] = dados.pop(k)
+        hidden['resumo']=row.resumo
+        hidden['ano']=row.secao_ano_nr.split("_")[-2]
+        hidden['nr']=row.secao_ano_nr.split("_")[-1]
+        hidden['secao']=row.secao_ano_nr.split("_")[0]
+        hidden['valido']="Válido" if row.valido==True else "Inválido" if row.valido==False else "Em trabalho"
+    
+        beautify_show = dict2htmltable(show)
+        shows.append([beautify_show,hidden])
+    context = dict(
+        auth={"user": user, "is_logged_in": is_logged_in},
+        len_rows = len(rows),
+        is_salc=is_salc,is_admin=is_admin,is_od=is_od,is_fiscal=is_fiscal,
+        q=q,
+        msg=msg,
+        CHANGELOG=settings.CHANGELOG,
+        shows=shows
+    )
+    return render(request, 'requisicoes/pesquisar.html', context)
+
+def profile(request):
+    user = None
+    is_logged_in = False
+    if request.user.is_authenticated:
+        user = request.user
+        is_logged_in = True
+        retorno = "Usuário existente"
+    #else: Tirar esse cara daqui   
+    contasdesteuser = getContasDesteUser(request)
+    is_salc,is_fiscal,is_od,is_admin,is_odsubstituto = getPrivs(request)
+    salc,fiscal,od,admin,odsubstituto = ["Sim" if f else "Não" for f in [is_salc,is_fiscal,is_od,is_admin,is_odsubstituto]]
+    logado = request.user
+    try:
+        #pessoa = dbpgsped(dbpgsped.pessoa.nm_login==auth.user.username).select().first().as_dict()
+        pessoa = Pessoa.objects.get(nm_login=request.user.username).__dict__
+    except Pessoa.DoesNotExist:
+        return contas
+    pessoa['patente'] = posto_graduacao(pessoa['cd_patente'], 1)
+    usuarios = {}
+    usuarios 
+    for usuario in contasdesteuser:
+        #dbpgsped(
+        # (dbpgsped.usuario_pessoa.id_pessoa==pessoa['id_pessoa'])&
+        # (dbpgsped.usuario_pessoa.dt_fim==None)).
+        # select(dbpgsped.usuario_pessoa.id_usuario):
+        usuarios[usuario[0]] = Usuario.objects.get(id_usuario=usuario[0]).__dict__
+        #dbpgsped.usuario(usuario.id_usuario).as_dict()
+    del pessoa['_state']
+    del pessoa['id_pessoa']
+    del pessoa['cd_patente']
+    contas = {}
+    for usuario in usuarios:
+        s = Usuario_Secao.objects.get(id_usuario=usuarios[usuario]['id_usuario']).id_secao.id_secao
+        # dbpgsped(
+        # dbpgsped.usuario_secao.id_usuario==usuarios[usuario]['id_usuario'])
+        # .select().first().id_secao
+        sr = Secao.objects.get(id_secao=s)
+        # dbpgsped.secao(s).as_dict()
+        contas[usuarios[usuario]['nm_usuario']] = "Seção: "+sr.nm_sigla
+    #editavel = True if secao in secoesdesteuser else False
+    perfil = {'Contas':contas, 'Pessoa':pessoa, 'Privilégios':{"Admin":admin,"OD":od,"Fiscal":fiscal,"Salc":salc,"OD Substituto":odsubstituto}}
+    context = {
+        "app": app,
+        "flash":"",
+        "CHANGELOG": settings.CHANGELOG,
+        "auth":{"user": user, "is_logged_in": is_logged_in},
+        "form_user":"ccc",
+        "today": datetime.now().strftime("%d/%m/%Y"),
+        "editavel":True,
+        "is_salc":is_salc,
+        "is_admin":is_admin,
+        "is_od":is_od,
+        "is_fiscal":is_fiscal,
+        "perfil":dict2htmltable(perfil)
+    } 
+    return render(request, 'requisicoes/profile.html', context)
 
 def conf(request):
     # Nem continuar caso não logado
@@ -593,63 +862,18 @@ def conf(request):
     } 
     return render(request, 'requisicoes/conf.html', context)
 
-def profile(request):
-    retorno = ""
-    user = None
-    is_logged_in = False
-    if request.user.is_authenticated:
-        user = request.user
-        is_logged_in = True
-        retorno = "Usuário existente"
-    #else: Tirar esse cara daqui   
-    contasdesteuser = getContasDesteUser(request)
-    is_salc,is_fiscal,is_od,is_admin,is_odsubstituto = getPrivs(request)
-    salc,fiscal,od,admin,odsubstituto = ["Sim" if f else "Não" for f in [is_salc,is_fiscal,is_od,is_admin,is_odsubstituto]]
-    logado = request.user
-    try:
-        #pessoa = dbpgsped(dbpgsped.pessoa.nm_login==auth.user.username).select().first().as_dict()
-        pessoa = Pessoa.objects.get(nm_login=request.user.username).__dict__
-    except Pessoa.DoesNotExist:
-        return contas
-    pessoa['patente'] = posto_graduacao(pessoa['cd_patente'], 1)
-    usuarios = {}
-    usuarios 
-    for usuario in contasdesteuser:
-        #dbpgsped(
-        # (dbpgsped.usuario_pessoa.id_pessoa==pessoa['id_pessoa'])&
-        # (dbpgsped.usuario_pessoa.dt_fim==None)).
-        # select(dbpgsped.usuario_pessoa.id_usuario):
-        usuarios[usuario[0]] = Usuario.objects.get(id_usuario=usuario[0]).__dict__
-        #dbpgsped.usuario(usuario.id_usuario).as_dict()
-    del pessoa['_state']
-    del pessoa['id_pessoa']
-    del pessoa['cd_patente']
-    contas = {}
-    for usuario in usuarios:
-        s = Usuario_Secao.objects.get(id_usuario=usuarios[usuario]['id_usuario']).id_secao.id_secao
-        # dbpgsped(
-        # dbpgsped.usuario_secao.id_usuario==usuarios[usuario]['id_usuario'])
-        # .select().first().id_secao
-        sr = Secao.objects.get(id_secao=s)
-        # dbpgsped.secao(s).as_dict()
-        contas[usuarios[usuario]['nm_usuario']] = "Seção: "+sr.nm_sigla
-    #editavel = True if secao in secoesdesteuser else False
-    perfil = {'Contas':contas, 'Pessoa':pessoa, 'Privilégios':{"Admin":admin,"OD":od,"Fiscal":fiscal,"Salc":salc,"OD Substituto":odsubstituto}}
-    context = {
-        "app": app,
-        "flash":"",
-        "CHANGELOG": settings.CHANGELOG,
-        "auth":{"user": user, "is_logged_in": is_logged_in},
-        "form_user":"ccc",
-        "today": datetime.now().strftime("%d/%m/%Y"),
-        "editavel":True,
-        "is_salc":is_salc,
-        "is_admin":is_admin,
-        "is_od":is_od,
-        "is_fiscal":is_fiscal,
-        "perfil":dict2htmltable(perfil)
-    } 
-    return render(request, 'requisicoes/profile.html', context)
+def userlogin(request):
+    if request.POST.get('username') and request.POST.get('password'):
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(username=username, password=password)
+        if user is not None:
+            login(request, user)
+    return redirect('requisicoes:index')
+
+def userlogout(request):
+    logout(request)
+    return redirect('requisicoes:index')
 
 @csrf_exempt
 def api(request):
@@ -889,6 +1113,19 @@ def api(request):
             pr.save()
             dic['assinatura'] = assinatura
             dic['hashed'] = CRYPT(pr.dados)
+        if dic['comentar']:
+            try:
+                pessoa = Pessoa.objects.get(nm_login=request.user.username)
+                autor = posto_graduacao(pessoa.cd_patente, 1) + " " + pessoa.nm_guerra+ " - "+ pessoa.nm_completo
+                dic['autor']=autor
+                dic['datahora']=datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+                dic['comentario']=vars.pop('comentario')
+                c = Comentario(pr=vars.pop('processo'),
+                            autor=autor,
+                            comentario=dic['comentario'])
+                c.save()
+            except Exception as e:
+                return HttpResponse(mark_safe(f'<h2>{e=}</h2>'), status=400)
         if dic['remline']:
             """
             """
@@ -942,7 +1179,6 @@ def api(request):
             elif vars["modo"] == "dispensa": modo = "dispensa"
             elif vars["modo"] == "inex": modo = "inex"
             else: return JsonResponse({"error":"Modo não permitido."})
-            
             try:
                 anexos_deste_processo = Anexo.objects.filter(pr__exact=vars['processo'])
                 total = 0
@@ -951,7 +1187,6 @@ def api(request):
                         total+=int(a.tamanho)
                     except:
                         pass
-                
                 filesize = len(request.FILES['file-data'])
                 total+=filesize
                 if total>settings.MAXSIZE*1024: 
@@ -1009,13 +1244,12 @@ def api(request):
                 return HttpResponse(mark_safe(f'<h2>{e=}</h2>'), status=500)
     elif request.method =='PUT':
         dic=dict(validar=False,invalidar=False,clonar=False)
-        vars = request.PUT.copy()
-        if not vars:
-            vars = json.loads(request.body)
+        vars = request.GET.copy()
+        vars.update(json.loads(request.body))
         dic['vars'] = vars.copy()
         for key, value in dic.items():
             if key in vars: dic.update({key:True if (vars[key] == "1" or vars[key] == "true") else False})
-        if dic['validar']: # TODO: testar
+        if dic['validar']:
             # Pegar o conjunto de dados deste documento
             try:
                 pr = Processo_requisitorio.objects.get(secao_ano_nr__exact=vars['processo'])
@@ -1024,11 +1258,11 @@ def api(request):
                 return HttpResponse('Bad Request', status=400)
             if pr.valido!=None:
                 return HttpResponse('Este processo já foi encerrado', status=400)
-            pr['valido']=True
+            pr.valido=True
             params = dict(secao=vars['processo'].split("_")[0],ano=vars['processo'].split("_")[-2],nr=vars['processo'].split("_")[-1])
             dic['redirect2']='?'+ urllib.parse.urlencode(params)
             pr.save()
-        if dic['invalidar']: # TODO: testar
+        if dic['invalidar']:
             # Pegar o conjunto de dados deste documento
             try:
                 pr = Processo_requisitorio.objects.get(secao_ano_nr__exact=vars['processo'])
@@ -1049,7 +1283,7 @@ def api(request):
                 secao=vars['secao']
                 ano=vars['ano'] if 'ano' in vars else datetime.now().strftime('%Y') # Brecha proposital
                 resumo=vars['resumo']
-                groups = secoes_deste_user()
+                groups = secoes_deste_user
             except: # Não encontrou?
                 return HttpResponse('Bad Request', status=400)
             # Checar novamente se ele tem permissão para inserir nesta seção
@@ -1057,7 +1291,7 @@ def api(request):
                 return HttpResponse('Unauthorized', status=403)
             # montagem dos dados a serem inseridos
             try:
-                last = Processo_requisitorio.objects.filter(secao_ano_nr__contains=secao+"_"+ano).order_by(id).last()
+                last = Processo_requisitorio.objects.filter(secao_ano_nr__contains=secao+"_"+ano).order_by('id').last()
                 # TODO: checar oq acpntece qd a seção n tem processos. last=None ou dá erro?
                 nr = "%02d"%(int(last.secao_ano_nr.split("_")[-1])+1) if last else "01"
                 dados["data"]=datetime.now().strftime('%d/%m/%Y')
@@ -1065,7 +1299,7 @@ def api(request):
                 campos_assinados = [ k for k,v in dados.items() if "ass_" in k]
                 for c in campos_assinados:
                     dados.pop(c)
-            except:
+            except Exception as e:
                 return HttpResponse('Internal Server Error', status=500)
             # Inserção
             pr = Processo_requisitorio(secao_ano_nr=secao+'_'+ano+'_'+nr,
