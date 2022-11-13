@@ -42,37 +42,41 @@ def pop(**kargs):
     con.close()
     cur2.close()
     con2.close()
-
-    try:
-        l = ldap.initialize('ldap://ldap')
-        username = "cn=admin,dc=eb,dc=mil,dc=br"
-        password = 'secret'
-        l.protocol_version = ldap.VERSION3
-        l.simple_bind_s(username, password)
-        attrs = {}
-        attrs['objectClass'] = [b"person", b"organizationalPerson", b"inetOrgPerson", b"posixAccount"]
-        attrs['uid'] = [b'capfoo']
-        attrs['cn'] = [b'capfoo']
-        attrs['givenname'] = [b'Foo']
-        attrs['sn'] = [b'Bar']
-        attrs['mail'] = [b'email']
-        attrs['uidNumber'] = [b'1000']
-        attrs['gidNumber'] = [b'5000']
-        attrs['loginShell'] = [b'bash']
-        attrs['homeDirectory'] = [b'/']
-        attrs['userPassword'] = [b'12345']
-        ldif = modlist.addModlist(attrs)
-        l.add_s("cn=capfoo,dc=eb,dc=mil,dc=br",ldif)
-        l.unbind_s()
-    except Exception as e:
-        print(e)
+    if add_ldap_user:
+        try:
+            l = ldap.initialize('ldap://ldap')
+            username = "cn=admin,dc=eb,dc=mil,dc=br"
+            password = 'secret'
+            l.protocol_version = ldap.VERSION3
+            l.simple_bind_s(username, password)
+            attrs = {}
+            attrs['objectClass'] = [b"person", b"organizationalPerson", b"inetOrgPerson", b"posixAccount"]
+            attrs['uid'] = [b'capfoo']
+            attrs['cn'] = [b'capfoo']
+            attrs['givenname'] = [b'Foo']
+            attrs['sn'] = [b'Bar']
+            attrs['mail'] = [b'email']
+            attrs['uidNumber'] = [b'1000']
+            attrs['gidNumber'] = [b'5000']
+            attrs['loginShell'] = [b'bash']
+            attrs['homeDirectory'] = [b'/']
+            attrs['userPassword'] = [b'12345']
+            ldif = modlist.addModlist(attrs)
+            l.add_s("cn=capfoo,dc=eb,dc=mil,dc=br",ldif)
+            l.unbind_s()
+        except Exception as e:
+            print(e)
 
 if __name__ == '__main__':
     user = "postgres"
     senha = "secret"
     if len(sys.argv)==2:
         senha = sys.argv[1]
-    elif len(sys.argv)>2:
+    elif len(sys.argv)==3:
         user = sys.argv[1]
         senha = sys.argv[2]
-    pop(user=user, senha=senha)
+    if "--add_ldap_user" in sys.argv:
+        b=True
+    else:
+        b=False
+    pop(user=user, senha=senha, add_ldap_user=b)
