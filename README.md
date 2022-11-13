@@ -1,7 +1,7 @@
 # django-processos-requisitorios
 App para montagem de processos requisitórios para subsidiar o empenho para aquisição de bens ou serviços via pregão gerente/participante, adesão à pregão, dispensa de licitação e/ou inexigibilidade. 
 
-<img src="imgs/inicio.jpg" alt="home"/>
+<img src=".github/inicio.jpg" alt="home"/>
 
 ## Requisitos
 * Docker: 
@@ -45,8 +45,9 @@ App para montagem de processos requisitórios para subsidiar o empenho para aqui
 
 `docker-compose up -d`  
 `docker-compose exec prs python manage.py makemigrations`  
-`docker-compose exec prs python manage.py makemigrations sped`  
-`docker-compose exec prs python manage.py migrate --database=dbpgsped `  
+`docker-compose exec prs python manage.py migrate requisicoes --database=default ` 
+`docker-compose exec prs python manage.py migrate admin --database=default ` 
+`docker-compose exec prs python manage.py migrate auth --database=default `
 `docker-compose exec prs python manage.py migrate sped --database=dbpgsped `  
 `docker-compose exec prs python manage.py createsuperuser`  
 `docker-compose restart`
@@ -78,7 +79,7 @@ Navegar para o PHPLDAPADMIN em _<https://localhost:6443/>_ (ou pelo IP da máqui
       - O importante para a autenticação é o atributo _Common Name (cn)_: capfoo
       - Escolher as demais variáveis First name (givenName), Last name (sn), User ID (uid), Password (userPassword) ...
 
-<img src="imgs/phpLDAPadmin.jpg" alt="phpLDAPadmin"/>
+<img src=".github/phpLDAPadmin.jpg" alt="phpLDAPadmin"/>
 
 ## Uso
 

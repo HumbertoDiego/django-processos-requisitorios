@@ -1,4 +1,7 @@
 __pycache__/
-/requisicoes/migrations/
-/sped/migrations/
-/uploads/anexos/
+/requisicoes/migrations/*
+!/requisicoes/migrations/__init__.py
+/sped/migrations/*
+!/sped/migrations/__init__.py
+/uploads/anexos/*
+!/uploads/anexos/.gitkeep

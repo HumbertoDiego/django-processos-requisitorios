@@ -72,15 +72,19 @@ TEMPLATES = [
 WSGI_APPLICATION = 'prs.wsgi.application'
 
 if sped.get('host'):
-    POST_HOST = sped.get('host',os.environ['POST_HOST'])
+    POST_HOST = sped.get('host')
     POST_USER = sped.get('post_user',os.environ['POST_USER'])
     POST_PASSWORD = sped.get('post_pass',os.environ['POST_PASSWORD'])
     POST_AUTHDB = sped.get('database',os.environ['POST_AUTHDB'])
+    BASE_DN    = sped.get('base_dn', ldap.get('base_dn', 'dc=eb,dc=mil,dc=br') )
+    LDAP_HOST = sped.get('host', ldap.get('host', 'ldap') )
 else:
     POST_HOST = os.environ['POST_HOST']
     POST_USER = os.environ['POST_USER']
     POST_PASSWORD = os.environ['POST_PASSWORD']
     POST_AUTHDB = os.environ['POST_AUTHDB']
+    BASE_DN    = ldap.get('base_dn', 'dc=eb,dc=mil,dc=br')
+    LDAP_HOST = ldap.get('host', 'ldap')
 
 DATABASES = {
     'default': {
@@ -135,9 +139,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 OMENDERECO = app.get('orgendereco')
 ALLOWED = app.get('allowed_ext')
 MAXSIZE = int(app.get('maxtotalfsize'))
-
-BASE_DN    = ldap.get('base_dn') # sped.get('base_dn')
-LDAP_HOST = ldap.get('host') # sped.get('host')
 
 AUTH_LDAP_SERVER_URI = "ldap://%s"%(LDAP_HOST)
 AUTH_LDAP_BIND_DN = ""

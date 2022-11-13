@@ -286,7 +286,7 @@ def get_secoes():
         #dbpg().select(dbpg.processo_requisitorio.secao_ano_nr)]
         S = sorted(list(set(SECOES+SECOES_PROCESSOS)))
         #t = cache.ram('secoes', lambda: S, time_expire=tempo)
-        return S if S else ["secoes?"]
+        return S if S else ["???"]
 
 def my_redirect(url,params):
     response = redirect(url)
@@ -384,8 +384,9 @@ def getcomentarios(request,processo):
 
 def getPrivs(request):
     is_salc,is_fiscal,is_od,is_admin,is_odsubstituto = False,False,False,False,False
-    conf = Configuracao.objects.latest('id')
-    if not conf:
+    try:
+        conf = Configuracao.objects.latest('id')
+    except:
         try:
             if int(app['conta_admin'][1]) in [r[0] for r in getContasDesteUser(request)]:
                 is_admin=True
@@ -814,7 +815,10 @@ def conf(request):
                                                                     widget=forms.CheckboxSelectMultiple,
                                                                     help_text=self.fields['contas_salc'].help_text
                                                                     )
-    record = Configuracao.objects.all().order_by('id').last()
+    try:
+        record = Configuracao.objects.latest('id')
+    except:
+        record = None    
     if request.method == 'POST':
         form = ConfForm(request.POST,instance=record)
         if form.is_valid():
@@ -1049,7 +1053,7 @@ def api(request):
             except:
                 return HttpResponse('Internal Server Error', status=500)
             # Comparar o cmapo da assinatura com as autorizações da pessoa que está assinando
-            conf = Configuracao.objects.all().last()
+            conf = Configuracao.objects.latest('id')
             is_salc = False
             is_fiscal = False
             is_od = False
