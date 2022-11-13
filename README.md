@@ -6,8 +6,8 @@ App para montagem de processos requisitórios para subsidiar o empenho para aqui
 ## Requisitos
 * Docker: 
   * Windows:
-    * Fazer o download e instalar [Start Docker Desktop](https://docs.docker.com/desktop/install/windows-install/ "Start Docker Desktop"); e
-    * Fazer o download e instalar o [Windows Subsystem for Linux Kernel](https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi "Windows Subsystem for Linux Kernel") (wsl2kernel)
+    * Fazer o download e instalar o [Windows Subsystem for Linux Kernel](https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi "Windows Subsystem for Linux Kernel") (wsl2kernel); e
+    * Fazer o download e instalar [Start Docker Desktop](https://docs.docker.com/desktop/install/windows-install/ "Start Docker Desktop")
 
   * Debian/Ubuntu: 
     ```
@@ -187,7 +187,58 @@ O operador com o perfil *Admin* ou *SALC* recebe um menu de usuário com opçõe
 
 ## Admin
 
+A senha escolhida após o comando `docker-compose exec prs python manage.py createsuperuser` permite o acesso à area admin do DJANGO em https://localhost/admin. Essa ferramenta permite a leitura das tabelas do banco PostgreSQL.
+
+
+
+Os arquivos importantes são:
+
+1. `./appconfig.py`: Atribui valores para personalização do frontend da plataforma com os dados que constam em todos os documentos, por exemplo:
+    * timbre_linha1 = MINISTÉRIO DA DEFESA
+    * timbre_linha2 = EXÉRCITO BRASILEIRO
+    * timbre_linha3 = DCT - DSG
+    * timbre_linha4 = 4º CENTRO DE GEOINFORMAÇÃO
+    * allowed_ext = [txt,ini,md,json,geojson,png,jpg,jpeg,odt,ods,odp,doc,docx,xls,xlsx,ppt,pptx,pdf,zip,rar,tar,gzip,gz,7z]
+    * conta_admin = (Admin,1)
+    * maxtotalfsize = 8000
+    * url_creditos_disponveis = #
+    * url_modelo_solicitacao_aceite = #
+    * url_modelo_solicitacao_orcamento = #
+    * url_modelo_comprovante_exclusividade = #
+2. `./vars.json`: Atribui valores para personalização do frontend com os valores iniciais das variáveis dos documentos (que são alteradas pelos usuários requisitantes), por exemplo:
+    * "assunto": "Aquisição de material"
+    * "objetivo": "A PRESENTE AQUISIÇÃO DESTINA-SE AO CUMPRIMENTO DO OE4ºCGEO N° 04 - META 4.2 PROMOVER MELHORIAS NA INFRAESTRUTURA (INSTALAÇÕES, EQUIPAMENTOS E MATERIAIS) DA OM INCLUSIVE NA ÁREA DE TI"
+    * "qtnecessidade-justificativa": "1 item, resultando num quantitativo de 02 unidades de material técnico topográfico/cartográfico, todos expressos na Planilha de Necessidades e Mapa Comparativo de Preços, totalizando o valor de R$ 2.600,00 (dois mil e seiscentos reais)."
+3. `./requisicoes/templates/requisicoes/index.html`: Recebe os valores de personalização através de código python embedded como em {{ app.get('url_modelo_solicitacao_orcamento','#') }} e ainda valores processados pelo controlador;
+4. `./requisicoes/views.py`: processa as requisições e prepara as variáveis para a resposta;
+5. `./requisicoes/models.py`: Faz o ligação com os bancos de dados e a aplicação; e
+6. `./prs/settings.py`: Configuração geral do aplicativo, inclusive da variáveis do serviço LDAP.
 
 ## Migração para SPED
 
+Antes deve-se criar um usuário somente leitura no banco do SPED:
+
+```
+root@sped-VM:~# su postgres -c 'psql'
+postgres=# CREATE USER <USERNAME> WITH PASSWORD '<PASSWORD>';
+postgres=# GRANT CONNECT ON DATABASE speddb TO <USERNAME>;
+postgres=# GRANT USAGE ON SCHEMA public TO <USERNAME>;
+postgres=# GRANT SELECT ON ALL TABLES IN SCHEMA public TO <USERNAME>;
+postgres=# GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO <USERNAME>;
+```
+
+Para ligar a um serviço LDAP e a tabelas necessárias de um Sitema SPED é necessário adicionar as variáveis do SPED em `./appconfig.py`:
+
+```
+...
+sped = {
+    "host"     : '<IP ou HOST>',
+    "post_user": '<USERNAME>',
+    "post_pass": '<PASSWORD>',
+    "database" : 'speddb',
+    "base_dn"  : 'dc=eb,dc=mil,dc=br',
+    "pool_size": 10
+}
+...
+```
 

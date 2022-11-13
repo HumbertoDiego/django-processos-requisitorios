@@ -13,8 +13,6 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 from pathlib import Path
 import json, os
 from appconfig import app, host, sped, ldap as ldapconf
-import ldap
-from django_auth_ldap.config import LDAPSearch
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -73,9 +71,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'prs.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/4.0/ref/settings/#databases
+if sped.get('host'):
+    POST_HOST = sped.get('host',os.environ['POST_HOST'])
+    POST_USER = sped.get('post_user',os.environ['POST_USER'])
+    POST_PASSWORD = sped.get('post_pass',os.environ['POST_PASSWORD'])
+    POST_AUTHDB = sped.get('database',os.environ['POST_AUTHDB'])
+else:
+    POST_HOST = os.environ['POST_HOST']
+    POST_USER = os.environ['POST_USER']
+    POST_PASSWORD = os.environ['POST_PASSWORD']
+    POST_AUTHDB = os.environ['POST_AUTHDB']
 
 DATABASES = {
     'default': {
@@ -88,10 +93,10 @@ DATABASES = {
     },
     'dbpgsped': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ['POST_AUTHDB'],
-        'USER': os.environ['POST_USER'],
-        'PASSWORD': os.environ['POST_PASSWORD'],
-        'HOST': os.environ['POST_HOST'],
+        'NAME': POST_AUTHDB,
+        'USER': POST_USER,
+        'PASSWORD': POST_PASSWORD,
+        'HOST': POST_HOST,
         'PORT': '5432'
     }
 }
@@ -115,10 +120,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
-# Internationalization
-# https://docs.djangoproject.com/en/4.0/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
@@ -127,23 +128,21 @@ USE_I18N = True
 
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.0/howto/static-files/
-
 STATIC_URL = 'static/'
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_LDAP_SERVER_URI = "ldap://ldap"
+OMENDERECO = app.get('orgendereco')
+ALLOWED = app.get('allowed_ext')
+MAXSIZE = int(app.get('maxtotalfsize'))
 
+BASE_DN    = ldap.get('base_dn') # sped.get('base_dn')
+LDAP_HOST = ldap.get('host') # sped.get('host')
+
+AUTH_LDAP_SERVER_URI = "ldap://%s"%(LDAP_HOST)
 AUTH_LDAP_BIND_DN = ""
 AUTH_LDAP_BIND_PASSWORD = ""
-#AUTH_LDAP_USER_SEARCH = LDAPSearch("dc=eb,dc=mil,dc=br", ldap.SCOPE_SUBTREE, "(cn=%(user)s)")
-AUTH_LDAP_USER_DN_TEMPLATE = "cn=%(user)s,dc=eb,dc=mil,dc=br"
+AUTH_LDAP_USER_DN_TEMPLATE = "cn=%(user)s,"+BASE_DN
 
 AUTHENTICATION_BACKENDS = ['django_auth_ldap.backend.LDAPBackend',
                            'django.contrib.auth.backends.ModelBackend']
@@ -151,7 +150,3 @@ AUTHENTICATION_BACKENDS = ['django_auth_ldap.backend.LDAPBackend',
 MEDIA_ROOT = BASE_DIR / 'uploads/'
 MEDIA_URL = '/uploads/'
 
-OMENDERECO = app.get('orgendereco')
-BASE_DN    = sped.get('base_dn')
-ALLOWED = app.get('allowed_ext')
-MAXSIZE = int(app.get('maxtotalfsize'))

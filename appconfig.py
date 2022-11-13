@@ -26,32 +26,24 @@ app = {
 "url_modelo_solicitacao_orcamento": '#',
 "url_modelo_comprovante_exclusividade": '#'
 }
-# Host configuration,
+
 host = {
     "names": ["localhost:*", "127.0.0.1:*", "*:*", "*"]
 }
-# db configuration,
-db = {
-    "uri"      : "sqlite://storage.sqlite",
-    "migrate"  : True,
-    "pool_size": 10
-}
-# sped configuration --> Preferencial --> Banco com a distribição dos usuários e LDAP para autenticação,
+## Sped configuration --> Preferencial 
+# Banco com a distribição dos usuários e LDAP para autenticação,
 sped = {
     "host"     : '',
-    "uri"      : '',
+    "post_user": '',
+    "post_pass": '',
+    "database" : 'speddb',
     "base_dn"  : 'dc=eb,dc=mil,dc=br',
     "pool_size": 10
 }
+## No SPED configuration
 # ldap configuration --> Banco com a distribição dos usuários e LDAP para autenticação caso sped.uri vazio,
 ldap = {
     "host"     : 'ldap',
     "base_dn"  : 'dc=eb,dc=mil,dc=br',
-    "pool_size": 10
-}
-# dbpg configuration
-dbpg = {
-    "host"     : 'post',
-    "migrate"  : True,
     "pool_size": 10
 }
