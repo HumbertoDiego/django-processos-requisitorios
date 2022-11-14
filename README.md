@@ -37,8 +37,8 @@ App para montagem de processos requisitórios para subsidiar o empenho para aqui
 
 ## Instalação
 
-`git init`  
-`git pull https://github.com/HumbertoDiego/django-processos-requisitorios`
+`git clone https://github.com/HumbertoDiego/django-processos-requisitorios`   
+`cd django-processos-requisitorios`  
 
   - Trocar as senhas "secret" dos serviços nos arquivos _docker-compose.yml_ e _Dockefile_.
   - A senha escolhida para POST_PASSWORD deve ser a mesma que POSTGRES_PASSWORD para permitir a comunicação do app com o banco.
