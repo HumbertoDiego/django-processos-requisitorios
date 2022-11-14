@@ -5,3 +5,4 @@ __pycache__/
 !/sped/migrations/__init__.py
 /uploads/anexos/*
 !/uploads/anexos/.gitkeep
+.vscode/
