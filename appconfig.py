@@ -18,7 +18,7 @@ app = {
 "orgextenso"   : "4º Centro de Geoinformação",
 "ug"           : "160011",
 "allowed_ext"  : ["txt","ini","md","json","geojson","png","jpg","jpeg","odt","ods","odp","doc","docx","xls","xlsx","ppt","pptx","pdf","zip","rar","tar","gzip","gz","7z"],
-"conta_admin"  : ("Admin",1), # O id_usuario é o que de fato será utilizado para validação
+"conta_admin"  : ("Admin",6), # O id_usuario é o que de fato será utilizado para validação
 "secao_escape" : "DGEO", # o escape é usado qd o usuario não define um secao
 "maxtotalfsize": 8000, # maxfilesize em Kbytes
 "url_creditos_disponveis": '#',
@@ -33,10 +33,10 @@ host = {
 ## Sped configuration --> Preferencial 
 # Banco com a distribição dos usuários e LDAP para autenticação,
 sped = {
-    "host"     : '',
-    "post_user": '',
-    "post_pass": '',
-    "database" : 'speddb',
+    "host"     : '10.79.8.254',
+    "post_user": 'capdiego',
+    "post_pass": 'password',
+    "database" : 'spedDB',
     "base_dn"  : 'dc=eb,dc=mil,dc=br',
     "pool_size": 10
 }

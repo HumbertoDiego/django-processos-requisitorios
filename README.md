@@ -49,7 +49,9 @@ App para montagem de processos requisitórios para subsidiar o empenho para aqui
 `docker-compose exec prs python manage.py migrate admin --database=default `  
 `docker-compose exec prs python manage.py migrate auth --database=default `  
 `docker-compose exec prs python manage.py migrate sessions --database=default`   
-`docker-compose exec prs python manage.py migrate sped --database=dbpgsped `  
+
+`docker-compose exec prs python manage.py migrate sped --database=dbpgsped `  # Não executar esta migração caso esteja usando o banco legado do SPED, veja [Migração para SPED ](#migração-para-sped) 
+
 `docker-compose exec prs python manage.py createsuperuser`   
 `docker-compose restart`  
 
@@ -218,15 +220,27 @@ Os arquivos importantes são:
 
 ## Migração para SPED
 
-Antes deve-se criar um usuário somente leitura no banco do SPED:
+Antes deve-se criar um backup do banco spedDB:
+
+`root@sped-VM:~# pg_dump -U postgres -h localhost -d spedDB > db_backup_2022_05_20.sql`
+
+
+Criar um usuário somente leitura para o banco spedDB:
 
 ```
 root@sped-VM:~# su postgres -c 'psql'
-postgres=# CREATE USER <USERNAME> WITH PASSWORD '<PASSWORD>';
-postgres=# GRANT CONNECT ON DATABASE speddb TO <USERNAME>;
-postgres=# GRANT USAGE ON SCHEMA public TO <USERNAME>;
-postgres=# GRANT SELECT ON ALL TABLES IN SCHEMA public TO <USERNAME>;
-postgres=# GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO <USERNAME>;
+postgres=# \c spedDB
+spedDB=# CREATE USER <USERNAME> WITH PASSWORD '<PASSWORD>';
+spedDB=# GRANT CONNECT ON DATABASE speddb TO <USERNAME>;
+spedDB=# GRANT USAGE ON SCHEMA public TO <USERNAME>;
+spedDB=# GRANT SELECT ON ALL TABLES IN SCHEMA public TO <USERNAME>;
+spedDB=# GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO <USERNAME>;
+```
+
+E ainda, como o Django==4.0 (necessário para suportar PostgreSQL até 9.525 --> SPED é 9.511) não suporta [MultipleColumnPrimaryKeys](https://code.djangoproject.com/wiki/MultipleColumnPrimaryKeys "MultipleColumnPrimaryKeys") como é o caso da tabela _usuario_secao_, a opção mais próxima implementada em _sped.model_ é `unique_together = (('id_usuario', 'id_secao'),)` , o que gera uma coluna chamada _id_ nesta tabela, para solucionar este caso sem precisar efetuar a migração (`docker-compose exec prs python manage.py migrate sped --database=dbpgsped `) 
+
+```
+spedDB=# ALTER TABLE usuario_secao ADD COLUMN id serial ;
 ```
 
 Para ligar a um serviço LDAP e a tabelas necessárias de um Sitema SPED é necessário adicionar as variáveis do SPED em `./appconfig.py`:

@@ -1,4 +1,5 @@
-django==4.1
+# django==4.1 --> PostgreSQL 11 or later is required (found 9.511).
+django==4.0
 django-auth-ldap
 gunicorn==20.1.0
 psycopg2-binary

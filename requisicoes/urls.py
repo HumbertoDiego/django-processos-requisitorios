@@ -18,4 +18,5 @@ urlpatterns = [
     path('getanos/', views.getanos, name='getanos'),
     path('getcomentarios/<str:processo>', views.getcomentarios, name='getcomentarios'),
     path('pendencias/<str:quem>', views.pendencias, name='pendencias'),
+    path('getcontas/', views.getContasDesteUser, name='getContasDesteUser'),
 ]

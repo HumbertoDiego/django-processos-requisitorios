@@ -370,8 +370,10 @@ def getContasDesteUser(request):
                 u_s = Usuario_Secao.objects.get(id_usuario=u.id_usuario.id_usuario)
             except Usuario_Secao.DoesNotExist:
                 continue
-            contas = Usuario.objects.filter(id_usuario=u_s.id_usuario.id_usuario)
-        return [(r.id_usuario,r.nm_usuario) for r in contas]
+            qs = Usuario.objects.filter(id_usuario=u_s.id_usuario.id_usuario)
+            for r in qs:
+                contas.append([r.id_usuario,r.nm_usuario])
+        return JsonResponse(contas, safe=False)
     else:
         return []
 
@@ -738,7 +740,7 @@ def profile(request):
         #pessoa = dbpgsped(dbpgsped.pessoa.nm_login==auth.user.username).select().first().as_dict()
         pessoa = Pessoa.objects.get(nm_login=request.user.username).__dict__
     except Pessoa.DoesNotExist:
-        return contas
+        return HttpResponseNotFound('<h1>%s não encontrado.</h1>'%(request.user.username))
     pessoa['patente'] = posto_graduacao(pessoa['cd_patente'], 1)
     usuarios = {}
     usuarios 
@@ -791,7 +793,7 @@ def conf(request):
     # Sempre necessário
     retorno = ""
     flash = 'Por Favor, preencha o formulário!'
-    choices = Usuario.objects.exclude(in_excluido="s").values("id_usuario","nm_usuario")
+    choices = Usuario.objects.exclude(in_excluido="s").values("id_usuario","nm_usuario").order_by('nm_usuario')
     choices_list = [('','--------')]
     choices_list.extend([(x['id_usuario'],x['nm_usuario']) for x in choices])
     # TODO estilizar formulário
@@ -831,7 +833,7 @@ def conf(request):
         # Converter o texto de contas_salc em opções de id
         form = ConfForm(instance=record,
                         initial={
-                                 "contas_salc": [int(i) for i in eval(record.contas_salc)]
+                                 "contas_salc": [int(i) for i in eval(record.contas_salc)] if record else []
                                 }
                         )
     contasdesteuser = getContasDesteUser(request)
@@ -1053,7 +1055,10 @@ def api(request):
             except:
                 return HttpResponse('Internal Server Error', status=500)
             # Comparar o cmapo da assinatura com as autorizações da pessoa que está assinando
-            conf = Configuracao.objects.latest('id')
+            try:
+                conf = Configuracao.objects.latest('id')
+            except:
+                contas = [] # Solução para não verificar a configuração 
             is_salc = False
             is_fiscal = False
             is_od = False
